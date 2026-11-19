@@ -1,0 +1,3616 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Kembara Adjektif (Perasaan) - Permainan 3D</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<style>
+  /* --- ASAS & FON --- */
+  * { box-sizing: border-box; user-select: none; -webkit-user-select: none; margin: 0; padding: 0; }
+  html, body {
+    width: 100%; height: 100%; overflow: hidden;
+    font-family: 'Baloo 2', cursive, sans-serif;
+    background: #1a0d08; color: #fff;
+  }
+
+  /* --- KANVAS 3D --- */
+  #game-canvas {
+    position: fixed; inset: 0; width: 100vw; height: 100vh;
+    display: block; z-index: 1;
+  }
+
+  /* --- LAPISAN VIGNETTE & KECEMASAN --- */
+  #vignette-layer {
+    position: fixed; inset: 0; pointer-events: none; z-index: 5;
+    box-shadow: inset 0 0 95px rgba(25, 10, 5, 0.58);
+    transition: background-color 0.25s ease, box-shadow 0.25s ease;
+  }
+  .damage-flash {
+    background-color: rgba(220, 38, 38, 0.42) !important;
+    box-shadow: inset 0 0 130px rgba(220, 38, 38, 0.88) !important;
+  }
+
+  /* --- BANNER BABAK SINEMATIK --- */
+  #cinematic-banner {
+    position: fixed; bottom: 13%; left: 50%; transform: translateX(-50%);
+    z-index: 25; pointer-events: none;
+    background: linear-gradient(135deg, rgba(44, 24, 16, 0.92), rgba(20, 10, 6, 0.94));
+    border: 3px solid #d97706; border-radius: 18px;
+    padding: 12px 26px; text-align: center;
+    box-shadow: 0 12px 30px rgba(0,0,0,0.65), inset 0 0 0 2px rgba(251, 191, 36, 0.25);
+    max-width: 90vw;
+  }
+  #cinematic-banner h3 {
+    color: #fbbf24; font-size: clamp(1.1rem, 2.5vw, 1.5rem);
+    text-shadow: 0 2px 4px rgba(0,0,0,0.8); letter-spacing: 0.5px;
+  }
+  #cinematic-banner p {
+    color: #fef3c7; font-size: clamp(0.9rem, 2vw, 1.1rem); font-weight: 600;
+  }
+
+  /* --- PENGURUS SKRIN --- */
+  .screen {
+    position: fixed; inset: 0; z-index: 20;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    padding: 14px; overflow-y: auto;
+    background: radial-gradient(circle at center, rgba(45, 22, 12, 0.42), rgba(15, 7, 4, 0.84));
+    backdrop-filter: blur(3px);
+  }
+  .hidden { display: none !important; }
+
+  /* --- KAD TEMA LANUN --- */
+  .pirate-card {
+    background: linear-gradient(180deg, #fef3c7 0%, #fde68a 55%, #fcd34d 100%);
+    color: #3e1f0d;
+    border: 6px solid #5c2d16;
+    border-radius: 26px;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.7), inset 0 0 0 3px #b45309, inset 0 0 28px rgba(146, 64, 14, 0.35);
+    padding: 22px 24px;
+    width: min(94vw, 660px);
+    max-height: 92vh;
+    overflow-y: auto;
+    position: relative;
+  }
+  .pirate-card-wide { width: min(96vw, 940px); }
+
+  .rivet {
+    position: absolute; width: 14px; height: 14px; border-radius: 50%;
+    background: radial-gradient(circle at 35% 35%, #fef08a, #b45309 70%, #451a03);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.5);
+  }
+  .rivet.tl { top: 10px; left: 10px; }
+  .rivet.tr { top: 10px; right: 10px; }
+  .rivet.bl { bottom: 10px; left: 10px; }
+  .rivet.br { bottom: 10px; right: 10px; }
+
+  .pirate-ribbon {
+    background: linear-gradient(180deg, #991b1b, #7f1d1d);
+    color: #fef08a;
+    border: 3px solid #f59e0b;
+    border-radius: 16px;
+    padding: 10px 18px;
+    text-align: center;
+    box-shadow: 0 6px 14px rgba(0,0,0,0.35);
+    margin-bottom: 14px;
+  }
+  .pirate-ribbon h1 {
+    font-size: clamp(1.35rem, 3.6vw, 2.05rem);
+    line-height: 1.15;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.7);
+  }
+  .pirate-ribbon p {
+    font-size: clamp(0.9rem, 2.2vw, 1.08rem);
+    color: #fde68a;
+    font-weight: 700;
+  }
+
+  /* --- INPUT & BUTANG --- */
+  .input-group { margin-bottom: 12px; }
+  .input-group label {
+    display: block; font-weight: 800; font-size: 1rem; color: #5c2d16; margin-bottom: 4px;
+  }
+  .pirate-input {
+    width: 100%; padding: 11px 14px; border-radius: 14px;
+    border: 3px solid #92400e; background: #fffbeb;
+    font-family: inherit; font-size: 1.05rem; font-weight: 700; color: #3e1f0d;
+    outline: none;
+  }
+  .pirate-input:focus { border-color: #d97706; box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.35); }
+
+  .btn {
+    font-family: inherit; font-weight: 800; font-size: 1.05rem;
+    border: none; border-radius: 16px; padding: 12px 18px;
+    cursor: pointer; transition: transform 0.12s ease, filter 0.12s ease;
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    box-shadow: 0 5px 0 rgba(0,0,0,0.35);
+  }
+  .btn:active { transform: translateY(3px); box-shadow: 0 2px 0 rgba(0,0,0,0.35); }
+  .btn:hover { filter: brightness(1.06); }
+
+  .btn-gold { background: linear-gradient(180deg, #facc15, #d97706); color: #3e1f0d; border: 2px solid #78350f; }
+  .btn-red { background: linear-gradient(180deg, #ef4444, #b91c1c); color: #fff; border: 2px solid #7f1d1d; }
+  .btn-blue { background: linear-gradient(180deg, #38bdf8, #0284c7); color: #fff; border: 2px solid #075985; }
+  .btn-green { background: linear-gradient(180deg, #4ade80, #16a34a); color: #fff; border: 2px solid #14532d; }
+  .btn-wood { background: linear-gradient(180deg, #92400e, #5c2d16); color: #fef3c7; border: 2px solid #3e1f0d; }
+
+  .menu-grid {
+    display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-top: 12px;
+  }
+  .menu-grid .btn-full { grid-column: span 2; font-size: 1.25rem; padding: 14px; }
+
+  /* --- PILIH AVATAR & PERINGKAT --- */
+  .select-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin: 10px 0 16px; }
+  .choice-box {
+    background: #fffbeb; border: 4px solid #b45309; border-radius: 18px;
+    padding: 14px; text-align: center; cursor: pointer; transition: all 0.15s;
+  }
+  .choice-box.active {
+    background: #fef08a; border-color: #dc2626; transform: scale(1.03);
+    box-shadow: 0 8px 18px rgba(220, 38, 38, 0.28);
+  }
+  .level-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 14px; }
+  .level-box {
+    background: #fffbeb; border: 3px solid #92400e; border-radius: 16px;
+    padding: 12px 8px; text-align: center; cursor: pointer;
+  }
+  .level-box.locked { opacity: 0.55; cursor: not-allowed; background: #e5e7eb; }
+  .level-box.active { background: #fde047; border-color: #b91c1c; border-width: 4px; }
+
+  /* --- HUD PERMAINAN UTAMA --- */
+  #hud-layer {
+    position: fixed; inset: 0; z-index: 15; pointer-events: none;
+    display: flex; flex-direction: column; justify-content: space-between;
+    padding: 10px 14px;
+  }
+  .hud-top {
+    display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
+    gap: 8px; pointer-events: auto;
+  }
+  .hud-pill {
+    background: rgba(44, 24, 16, 0.88);
+    border: 2px solid #f59e0b; border-radius: 999px;
+    padding: 6px 14px; font-weight: 800; font-size: clamp(0.85rem, 2vw, 1rem);
+    color: #fef3c7; display: inline-flex; align-items: center; gap: 6px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.45);
+  }
+
+  /* Bar Nyawa Bos (Kapal Musuh Level 2 / Sotong Kurita Level 3) */
+  #boss-hp-container {
+    pointer-events: none;
+    margin: 6px auto 0;
+    width: min(90vw, 480px);
+    background: rgba(30, 10, 20, 0.9);
+    border: 3px solid #f43f5e;
+    border-radius: 999px;
+    padding: 5px 14px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    box-shadow: 0 6px 16px rgba(0,0,0,0.6);
+  }
+  #boss-hp-bar-wrap {
+    flex: 1; height: 14px; background: #3f1d2e; border-radius: 999px; overflow: hidden;
+    border: 1px solid #fda4af;
+  }
+  #boss-hp-fill {
+    height: 100%; width: 100%;
+    background: linear-gradient(90deg, #e11d48, #f97316);
+    transition: width 0.35s ease;
+  }
+
+  /* Kotak Soalan di Bahagian Atas */
+  #question-box {
+    pointer-events: auto;
+    margin: 8px auto 0;
+    width: min(94vw, 760px);
+    background: linear-gradient(180deg, rgba(62, 31, 13, 0.94), rgba(38, 18, 8, 0.95));
+    border: 4px solid #facc15;
+    border-radius: 20px;
+    padding: 12px 18px;
+    text-align: center;
+    box-shadow: 0 12px 28px rgba(0,0,0,0.65);
+  }
+  #question-tag {
+    display: inline-block; background: #dc2626; color: #fff;
+    padding: 2px 12px; border-radius: 999px; font-size: 0.82rem; font-weight: 800;
+    margin-bottom: 4px;
+  }
+  #question-text {
+    font-size: clamp(1.08rem, 2.6vw, 1.42rem);
+    font-weight: 800; line-height: 1.3; color: #fffbeb;
+  }
+
+  /* Papan Jawapan Terapung 3D (A, B, C) */
+  #floating-answers {
+    position: fixed; inset: 0; pointer-events: none; z-index: 12;
+  }
+  .float-label {
+    position: absolute; transform: translate(-50%, -100%);
+    padding: 7px 14px; border-radius: 14px;
+    font-weight: 800; font-size: clamp(0.95rem, 2.2vw, 1.2rem);
+    color: #fff; border: 3px solid #fff;
+    box-shadow: 0 6px 16px rgba(0,0,0,0.55);
+    white-space: nowrap; text-shadow: 0 2px 3px rgba(0,0,0,0.6);
+  }
+  .bg-ans-a { background: linear-gradient(180deg, #f43f5e, #be123c); }
+  .bg-ans-b { background: linear-gradient(180deg, #22c55e, #15803d); }
+  .bg-ans-c { background: linear-gradient(180deg, #3b82f6, #1d4ed8); }
+
+  /* Kawalan Bawah & Butang Jawapan A/B/C */
+  .hud-bottom {
+    display: flex; flex-direction: column; align-items: center; gap: 10px;
+    pointer-events: auto; padding-bottom: 4px;
+  }
+  #answer-buttons {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;
+    width: min(96vw, 760px);
+  }
+  .ans-btn {
+    border: 3px solid #fff; border-radius: 18px; padding: 12px 10px;
+    font-family: inherit; font-weight: 800; font-size: clamp(0.95rem, 2.3vw, 1.2rem);
+    color: #fff; cursor: pointer; box-shadow: 0 6px 0 rgba(0,0,0,0.4);
+    text-shadow: 0 2px 3px rgba(0,0,0,0.5);
+  }
+  .ans-btn:active { transform: translateY(3px); }
+
+  .steer-controls {
+    display: flex; align-items: center; justify-content: center; gap: 12px;
+  }
+  .steer-btn {
+    width: 62px; height: 54px; border-radius: 16px;
+    background: rgba(62, 31, 13, 0.9); border: 3px solid #facc15;
+    color: #fef08a; font-size: 1.45rem; font-weight: 800;
+    cursor: pointer; box-shadow: 0 4px 0 rgba(0,0,0,0.45);
+  }
+  .fire-btn {
+    padding: 0 22px; height: 54px; border-radius: 16px;
+    background: linear-gradient(180deg, #f97316, #dc2626);
+    border: 3px solid #fef08a; color: #fff;
+    font-family: inherit; font-size: 1.15rem; font-weight: 800;
+    cursor: pointer; box-shadow: 0 4px 0 rgba(0,0,0,0.45);
+  }
+
+  /* --- NOTA BERGAMBAR & JADUAL GURU --- */
+  .notes-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(195px, 1fr));
+    gap: 10px; margin: 12px 0;
+  }
+  .note-item {
+    background: #fffbeb; border: 3px solid #b45309; border-radius: 16px;
+    padding: 12px; text-align: center;
+  }
+  .note-emoji { font-size: 2.2rem; }
+  .note-word { font-size: 1.2rem; font-weight: 800; color: #991b1b; }
+  .note-desc { font-size: 0.88rem; color: #5c2d16; margin: 4px 0; }
+  .note-ex { font-size: 0.85rem; font-style: italic; color: #1e3a8a; margin-bottom: 8px; }
+
+  table.record-table {
+    width: 100%; border-collapse: collapse; margin-top: 10px;
+    background: #fffbeb; font-size: 0.9rem; border-radius: 12px; overflow: hidden;
+  }
+  table.record-table th {
+    background: #92400e; color: #fef08a; padding: 8px 6px; text-align: left;
+  }
+  table.record-table td {
+    padding: 7px 6px; border-bottom: 1px solid #fde68a; color: #3e1f0d; font-weight: 600;
+  }
+
+  /* Kotak Mesej Dalaman */
+  #toast-msg {
+    position: fixed; top: 18px; left: 50%; transform: translateX(-50%);
+    z-index: 60; background: #1e293b; color: #fef08a;
+    border: 3px solid #f59e0b; border-radius: 14px;
+    padding: 10px 20px; font-weight: 800; font-size: 1rem;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.6);
+  }
+</style>
+</head>
+<body>
+
+<!-- KANVAS 3D -->
+<canvas id="game-canvas"></canvas>
+<div id="vignette-layer"></div>
+<div id="toast-msg" class="hidden"></div>
+
+<!-- BANNER BABAK SINEMATIK -->
+<div id="cinematic-banner" class="hidden">
+  <h3 id="cinematic-title">🚨 PERONDA MARITIM MENGESAN KAPAL!</h3>
+  <p id="cinematic-sub">Bersedia, Kapten! Pecut laju dan elak halangan!</p>
+</div>
+
+<!-- PAPAN JAWAPAN TERAPUNG 3D -->
+<div id="floating-answers" class="hidden">
+  <div id="float-a" class="float-label bg-ans-a">A</div>
+  <div id="float-b" class="float-label bg-ans-b">B</div>
+  <div id="float-c" class="float-label bg-ans-c">C</div>
+</div>
+
+<!-- SKRIN 1: MENU UTAMA -->
+<div id="screen-menu" class="screen">
+  <div class="pirate-card">
+    <span class="rivet tl"></span><span class="rivet tr"></span>
+    <span class="rivet bl"></span><span class="rivet br"></span>
+
+    <div class="pirate-ribbon">
+      <h1>🏴‍☠️ KEMBARA ADJEKTIF (PERASAAN) 🌊</h1>
+      <p>Belayar, Jawab dan Tembak Halangan!</p>
+    </div>
+
+    <div class="input-group">
+      <label for="input-name">🧭 Nama Kapten (Murid):</label>
+      <input id="input-name" class="pirate-input" type="text" placeholder="Contoh: Amirul Hakim" maxlength="30">
+    </div>
+
+    <div class="input-group">
+      <label for="input-class">🏫 Kelas:</label>
+      <input id="input-class" class="pirate-input" type="text" placeholder="Contoh: 3 Cemerlang" maxlength="20">
+    </div>
+
+    <div class="menu-grid">
+      <button id="btn-start" class="btn btn-gold btn-full">⛵ MULA BERMAIN</button>
+      <button id="btn-notes" class="btn btn-blue">📖 Nota Bergambar</button>
+      <button id="btn-howto" class="btn btn-wood">🗺️ Cara Bermain</button>
+      <button id="btn-leaderboard" class="btn btn-green">🏆 Papan Skor</button>
+      <button id="btn-teacher" class="btn btn-red">👩‍🏫 Paparan Guru</button>
+      <button id="btn-music" class="btn btn-wood btn-full">🔊 Muzik & Bunyi: HIDUP</button>
+    </div>
+  </div>
+</div>
+
+<!-- SKRIN 2: CARA BERMAIN -->
+<div id="screen-howto" class="screen hidden">
+  <div class="pirate-card">
+    <span class="rivet tl"></span><span class="rivet tr"></span>
+    <span class="rivet bl"></span><span class="rivet br"></span>
+    <div class="pirate-ribbon">
+      <h1>🗺️ CARA BERMAIN</h1>
+      <p>Panduan Kapten Muda Tahun 3</p>
+    </div>
+    <div style="font-size:1.05rem; line-height:1.55; font-weight:700; color:#3e1f0d;">
+      <p>1. ⛵ <b>Peringkat 1 (Pulau Perasaan):</b> Kemudi kapal lanun ke <b>kiri (◀)</b>, <b>kanan (▶)</b> atau <b>lompat (▲)</b> untuk mengutip syiling emas dan mengelak halangan sebelum menembak sasaran.</p>
+      <p style="margin-top:8px;">2. 🏴‍☠️ <b>Peringkat 2 (Pertempuran Meriam Lanun):</b> Berlawan meriam secara bersemuka dengan kapal lanun musuh! Jawapan betul membakar kapal musuh, jawapan salah menyebabkan kapal kamu terbakar.</p>
+      <p style="margin-top:8px;">3. 🐙 <b>Peringkat 3 (Sotong Kurita Gergasi):</b> Bidik meriam tepat ke arah sasaran pada Sotong Kurita Gergasi di hadapan kapal!</p>
+      <p style="margin-top:8px;">4. 💥 Pilih jawapan <b>A</b>, <b>B</b> atau <b>C</b> untuk menembak meriam kapal lanun! Nyawa kapal ada 3 (❤️❤️❤️).</p>
+    </div>
+    <div style="text-align:center; margin-top:16px;">
+      <button class="btn btn-gold" onclick="UI.showScreen('screen-menu')">⬅️ Kembali ke Menu</button>
+    </div>
+  </div>
+</div>
+
+<!-- SKRIN 3: NOTA BERGAMBAR & KUIZ MINI -->
+<div id="screen-notes" class="screen hidden">
+  <div class="pirate-card pirate-card-wide">
+    <span class="rivet tl"></span><span class="rivet tr"></span>
+    <span class="rivet bl"></span><span class="rivet br"></span>
+    <div class="pirate-ribbon">
+      <h1>📖 NOTA BERGAMBAR KATA ADJEKTIF PERASAAN</h1>
+      <p>Klik butang Dengar Nota atau cuba Kuiz Mini di bahagian bawah</p>
+    </div>
+
+    <div id="notes-container" class="notes-grid"></div>
+
+    <div style="background:#fffbeb; border:3px solid #d97706; border-radius:18px; padding:14px; margin-top:14px;">
+      <h2 style="color:#991b1b; font-size:1.25rem; margin-bottom:6px;">🎯 Kuiz Mini Latihan (6 Soalan)</h2>
+      <div id="mini-quiz-box"></div>
+    </div>
+
+    <div style="text-align:center; margin-top:14px;">
+      <button class="btn btn-gold" onclick="UI.showScreen('screen-menu')">⬅️ Kembali ke Menu</button>
+    </div>
+  </div>
+</div>
+
+<!-- SKRIN 4: PILIH AVATAR & PERINGKAT -->
+<div id="screen-setup" class="screen hidden">
+  <div class="pirate-card">
+    <span class="rivet tl"></span><span class="rivet tr"></span>
+    <span class="rivet bl"></span><span class="rivet br"></span>
+    <div class="pirate-ribbon">
+      <h1>🧭 PILIH KAPTEN & PERINGKAT</h1>
+      <p>Sediakan kapal sebelum belayar!</p>
+    </div>
+
+    <h3 style="color:#5c2d16; margin-bottom:6px;">1. Pilih Avatar Kapten:</h3>
+    <div class="select-grid">
+      <div id="avatar-boy" class="choice-box active" onclick="Game.selectAvatar('boy')">
+        <div style="font-size:2.6rem;">👦‍☠️</div>
+        <div style="font-weight:800; font-size:1.1rem;">Kapten Lelaki</div>
+      </div>
+      <div id="avatar-girl" class="choice-box" onclick="Game.selectAvatar('girl')">
+        <div style="font-size:2.6rem;">🧕‍☠️</div>
+        <div style="font-weight:800; font-size:1.1rem;">Kapten Perempuan</div>
+      </div>
+    </div>
+
+    <h3 style="color:#5c2d16; margin-bottom:6px;">2. Pilih Peringkat Pelayaran:</h3>
+    <div class="level-grid">
+      <div id="lvl-card-1" class="level-box active" onclick="Game.selectLevel(1)">
+        <div style="font-size:1.8rem;">😊</div>
+        <div style="font-weight:800;">Peringkat 1</div>
+        <div style="font-size:0.82rem;">Pulau Perasaan</div>
+        <div id="lvl-stars-1" style="font-size:0.85rem; margin-top:4px;">☆☆☆</div>
+      </div>
+      <div id="lvl-card-2" class="level-box" onclick="Game.selectLevel(2)">
+        <div style="font-size:1.8rem;">🏴‍☠️</div>
+        <div style="font-weight:800;">Peringkat 2</div>
+        <div style="font-size:0.82rem;">Pertempuran Meriam</div>
+        <div id="lvl-stars-2" style="font-size:0.85rem; margin-top:4px;">🔒</div>
+      </div>
+      <div id="lvl-card-3" class="level-box" onclick="Game.selectLevel(3)">
+        <div style="font-size:1.8rem;">🐙</div>
+        <div style="font-weight:800;">Peringkat 3</div>
+        <div style="font-size:0.82rem;">Sotong Kurita Gergasi</div>
+        <div id="lvl-stars-3" style="font-size:0.85rem; margin-top:4px;">🔒</div>
+      </div>
+    </div>
+
+    <div style="display:flex; gap:10px; justify-content:center;">
+      <button class="btn btn-wood" onclick="UI.showScreen('screen-menu')">⬅️ Menu</button>
+      <button class="btn btn-gold" style="flex:1;" onclick="Game.startVoyage()">⚓ BELAYAR SEKARANG!</button>
+    </div>
+  </div>
+</div>
+
+<!-- HUD PERMAINAN UTAMA -->
+<div id="hud-layer" class="hidden">
+  <div>
+    <div class="hud-top">
+      <div class="hud-pill">🧭 <span id="hud-player">Kapten</span> (<span id="hud-class">3A</span>)</div>
+      <div class="hud-pill">🗺️ Peringkat <span id="hud-level">1</span> | Soalan <span id="hud-qnum">1/10</span></div>
+      <div class="hud-pill">⭐ <span id="hud-score">0</span> | 🪙 <span id="hud-coins">0</span></div>
+      <div class="hud-pill" id="hud-lives">❤️❤️❤️</div>
+      <button class="btn btn-wood" style="padding:6px 12px; font-size:0.85rem;" onclick="Game.quitToMenu()">🏠 Keluar</button>
+    </div>
+
+    <div id="boss-hp-container" class="hidden">
+      <span id="boss-hp-label" style="font-weight:800; font-size:0.9rem; color:#fda4af;">🐙 SOTONG KURITA</span>
+      <div id="boss-hp-bar-wrap">
+        <div id="boss-hp-fill"></div>
+      </div>
+    </div>
+
+    <div id="question-box" class="hidden">
+      <div id="question-tag">CABARAN KATA ADJEKTIF PERASAAN</div>
+      <div id="question-text">Soalan akan dipaparkan di sini...</div>
+    </div>
+  </div>
+
+  <div class="hud-bottom">
+    <div id="answer-buttons" class="hidden">
+      <button id="btn-ans-0" class="ans-btn bg-ans-a" onclick="Game.submitAnswerByButton(0)">A</button>
+      <button id="btn-ans-1" class="ans-btn bg-ans-b" onclick="Game.submitAnswerByButton(1)">B</button>
+      <button id="btn-ans-2" class="ans-btn bg-ans-c" onclick="Game.submitAnswerByButton(2)">C</button>
+    </div>
+
+    <div id="steer-controls-bar" class="steer-controls">
+      <button class="steer-btn" onclick="World3D.moveLane(-1)" aria-label="Kiri">◀</button>
+      <button class="steer-btn" onclick="World3D.jump()" aria-label="Lompat">▲</button>
+      <button class="steer-btn" onclick="World3D.moveLane(1)" aria-label="Kanan">▶</button>
+      <button id="btn-fire-lane" class="fire-btn hidden" onclick="Game.submitAnswerByLane()">💥 TEMBAK!</button>
+    </div>
+  </div>
+</div>
+
+<!-- SKRIN 5: MAKLUM BALAS JAWAPAN -->
+<div id="screen-feedback" class="screen hidden">
+  <div class="pirate-card" style="text-align:center;">
+    <span class="rivet tl"></span><span class="rivet tr"></span>
+    <span class="rivet bl"></span><span class="rivet br"></span>
+    <div id="fb-banner" class="pirate-ribbon">
+      <h1 id="fb-title">🎉 HEBAT! JAWAPAN BETUL!</h1>
+      <p id="fb-sub">💥 Halangan berjaya dimusnahkan!</p>
+    </div>
+
+    <div style="background:#fffbeb; border:3px solid #b45309; border-radius:16px; padding:14px; margin-bottom:14px;">
+      <p id="fb-correct-ans" style="font-size:1.15rem; font-weight:800; color:#15803d; margin-bottom:6px;"></p>
+      <p id="fb-sentence" style="font-size:1.05rem; font-weight:700; color:#1e3a8a; margin-bottom:8px;"></p>
+      <p id="fb-explanation" style="font-size:1rem; color:#3e1f0d;"></p>
+    </div>
+
+    <div style="display:flex; justify-content:center; gap:16px; font-weight:800; font-size:1.1rem; margin-bottom:14px;">
+      <span>⭐ Markah: <span id="fb-score">0</span></span>
+      <span>Nyawa: <span id="fb-lives">❤️❤️❤️</span></span>
+    </div>
+
+    <button id="btn-continue-fb" class="btn btn-gold" style="width:100%; font-size:1.2rem;" onclick="Game.continueAfterFeedback()">⛵ TERUSKAN PELAYARAN</button>
+  </div>
+</div>
+
+<!-- SKRIN 6: KEPUTUSAN PERINGKAT -->
+<div id="screen-result" class="screen hidden">
+  <div class="pirate-card" style="text-align:center;">
+    <span class="rivet tl"></span><span class="rivet tr"></span>
+    <span class="rivet bl"></span><span class="rivet br"></span>
+    <div class="pirate-ribbon">
+      <h1 id="res-title">🏆 PELAYARAN TAMAT!</h1>
+      <p id="res-sub">Syabas, Kapten!</p>
+    </div>
+
+    <div id="res-stars" style="font-size:2.6rem; margin:6px 0;">⭐⭐⭐</div>
+
+    <div style="background:#fffbeb; border:3px solid #b45309; border-radius:16px; padding:12px; font-weight:700; line-height:1.6;">
+      <div>🧭 Kapten: <span id="res-name"></span> (<span id="res-class"></span>)</div>
+      <div>🗺️ Peringkat: <span id="res-level"></span></div>
+      <div>✅ Jawapan Betul: <span id="res-correct"></span> (<span id="res-percent"></span>)</div>
+      <div>🪙 Syiling Dikumpul: <span id="res-coins"></span></div>
+      <div id="res-sync-status" style="margin-top:6px; color:#0369a1;">☁️ Menyimpan rekod...</div>
+    </div>
+
+    <div style="display:flex; flex-wrap:wrap; gap:10px; justify-content:center; margin-top:14px;">
+      <button class="btn btn-blue" onclick="Game.startVoyage()">🔄 Main Lagi</button>
+      <button id="btn-next-level" class="btn btn-green" onclick="Game.nextLevel()">➡️ Peringkat Seterusnya</button>
+      <button class="btn btn-wood" onclick="UI.showScreen('screen-menu')">🏠 Menu Utama</button>
+    </div>
+  </div>
+</div>
+
+<!-- SKRIN 7: PAPAN SKOR & PAPARAN GURU -->
+<div id="screen-teacher" class="screen hidden">
+  <div class="pirate-card pirate-card-wide">
+    <span class="rivet tl"></span><span class="rivet tr"></span>
+    <span class="rivet bl"></span><span class="rivet br"></span>
+    <div class="pirate-ribbon">
+      <h1 id="teacher-screen-title">👩‍🏫 PAPARAN REKOD GURU</h1>
+      <p id="teacher-screen-sub">Pantau pencapaian kata adjektif perasaan murid</p>
+    </div>
+
+    <div id="teacher-pin-box" style="text-align:center; margin-bottom:12px;">
+      <p style="font-weight:700; margin-bottom:8px;">Masukkan PIN Guru untuk memuat turun rekod dari Google Sheets:</p>
+      <div style="display:flex; justify-content:center; gap:8px; max-width:360px; margin:0 auto;">
+        <input id="input-pin" class="pirate-input" type="password" placeholder="PIN Guru (cth: 1234)">
+        <button class="btn btn-gold" onclick="TeacherView.fetchCloudRecords()">🔓 Buka Rekod</button>
+      </div>
+    </div>
+
+    <div id="teacher-stats" style="display:flex; flex-wrap:wrap; gap:10px; justify-content:space-between; align-items:center; background:#fffbeb; padding:10px 14px; border-radius:14px; border:2px solid #b45309;">
+      <div style="font-weight:800;">👥 Jumlah Rekod: <span id="stat-total">0</span> | 📊 Purata Betul: <span id="stat-avg">0%</span></div>
+      <div style="display:flex; gap:8px; align-items:center;">
+        <select id="filter-class" class="pirate-input" style="padding:6px 10px; width:auto;" onchange="TeacherView.renderTable()">
+          <option value="ALL">Semua Kelas</option>
+        </select>
+        <button class="btn btn-green" style="padding:8px 12px; font-size:0.9rem;" onclick="TeacherView.copyCSV()">📋 Salin CSV</button>
+      </div>
+    </div>
+
+    <div id="teacher-note" style="font-size:0.85rem; color:#78350f; margin-top:6px; font-weight:700;"></div>
+
+    <div style="overflow-x:auto; max-height:44vh;">
+      <table class="record-table">
+        <thead>
+          <tr>
+            <th>Nama Murid</th>
+            <th>Kelas</th>
+            <th>Peringkat</th>
+            <th>Betul</th>
+            <th>Peratus</th>
+            <th>Bintang</th>
+            <th>Syiling</th>
+            <th>Tarikh & Masa</th>
+          </tr>
+        </thead>
+        <tbody id="teacher-tbody"></tbody>
+      </table>
+    </div>
+
+    <div style="text-align:center; margin-top:14px;">
+      <button class="btn btn-gold" onclick="UI.showScreen('screen-menu')">⬅️ Kembali ke Menu</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ============================================================================
+   1. KONFIGURASI GOOGLE SHEETS WEB APP
+   ============================================================================ */
+const SHEET_URL = '';
+
+/* ============================================================================
+   2. PEMBANTU ANTARA MUKA (UI & TOAST MESEJ)
+   ============================================================================ */
+const UI = {
+  screens: [
+    'screen-menu', 'screen-howto', 'screen-notes', 'screen-setup',
+    'screen-feedback', 'screen-result', 'screen-teacher'
+  ],
+  showScreen(id) {
+    this.screens.forEach((s) => {
+      const el = document.getElementById(s);
+      if (el) el.classList.add('hidden');
+    });
+    if (id) {
+      const target = document.getElementById(id);
+      if (target) target.classList.remove('hidden');
+    }
+  },
+  toast(msg, duration = 2600) {
+    const el = document.getElementById('toast-msg');
+    el.textContent = msg;
+    el.classList.remove('hidden');
+    clearTimeout(this._toastTimer);
+    this._toastTimer = setTimeout(() => el.classList.add('hidden'), duration);
+  }
+};
+
+/* ============================================================================
+   3. ENJIN AUDIO WEB AUDIO API
+   ============================================================================ */
+const AudioSys = {
+  ctx: null,
+  musicEnabled: true,
+  bgmTimer: null,
+  step: 0,
+
+  init() {
+    if (!this.ctx) {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      this.ctx = new AudioCtx();
+    }
+    if (this.ctx.state === 'suspended') {
+      this.ctx.resume();
+    }
+  },
+
+  toggleMusic() {
+    this.init();
+    this.musicEnabled = !this.musicEnabled;
+    if (this.musicEnabled) this.startMusic();
+    else this.stopMusic();
+    return this.musicEnabled;
+  },
+
+  playTone(freq, type, duration, vol = 0.15, slideFreq = null, delay = 0) {
+    if (!this.musicEnabled || !this.ctx) return;
+    try {
+      const now = this.ctx.currentTime + delay;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = type;
+      osc.frequency.setValueAtTime(freq, now);
+      if (slideFreq) {
+        osc.frequency.exponentialRampToValueAtTime(slideFreq, now + duration);
+      }
+      gain.gain.setValueAtTime(vol, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start(now);
+      osc.stop(now + duration);
+    } catch (e) {}
+  },
+
+  playNoise(duration, vol = 0.2, filterFreq = 800, delay = 0) {
+    if (!this.musicEnabled || !this.ctx) return;
+    try {
+      const now = this.ctx.currentTime + delay;
+      const bufferSize = Math.floor(this.ctx.sampleRate * duration);
+      const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+      const data = buffer.getChannelData(0);
+      for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+
+      const noise = this.ctx.createBufferSource();
+      noise.buffer = buffer;
+
+      const filter = this.ctx.createBiquadFilter();
+      filter.type = 'lowpass';
+      filter.frequency.setValueAtTime(filterFreq, now);
+
+      const gain = this.ctx.createGain();
+      gain.gain.setValueAtTime(vol, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+
+      noise.connect(filter);
+      filter.connect(gain);
+      gain.connect(this.ctx.destination);
+      noise.start(now);
+    } catch (e) {}
+  },
+
+  siren() {
+    this.init();
+    if (!this.musicEnabled) return;
+    this.playTone(640, 'sawtooth', 0.38, 0.14, 860, 0.0);
+    this.playTone(860, 'sawtooth', 0.38, 0.14, 620, 0.38);
+    this.playTone(640, 'sawtooth', 0.38, 0.14, 860, 0.78);
+    this.playTone(860, 'sawtooth', 0.42, 0.12, 540, 1.16);
+  },
+
+  pirateHorn() {
+    this.init();
+    if (!this.musicEnabled) return;
+    this.playTone(146.83, 'sawtooth', 0.65, 0.22, 138.59, 0.0);
+    this.playTone(220.00, 'sawtooth', 0.85, 0.18, 196.00, 0.45);
+  },
+
+  krakenRoar() {
+    this.init();
+    if (!this.musicEnabled) return;
+    this.playNoise(1.2, 0.35, 320, 0);
+    this.playTone(130, 'sawtooth', 0.9, 0.28, 48, 0.05);
+    this.playTone(95, 'square', 0.85, 0.2, 36, 0.25);
+  },
+
+  tentacleSlam() {
+    this.init();
+    if (!this.musicEnabled) return;
+    this.playNoise(0.75, 0.48, 280, 0);
+    this.playTone(140, 'sawtooth', 0.45, 0.38, 28, 0);
+    this.playTone(80, 'square', 0.5, 0.3, 24, 0.08);
+  },
+
+  splash() {
+    this.init();
+    this.playNoise(0.28, 0.16, 1200);
+    this.playTone(220, 'sine', 0.18, 0.08, 340);
+  },
+
+  coin() {
+    this.init();
+    this.playTone(987.77, 'sine', 0.12, 0.18, null, 0);
+    this.playTone(1318.51, 'sine', 0.25, 0.18, null, 0.09);
+  },
+
+  cannon() {
+    this.init();
+    this.playNoise(0.55, 0.38, 420);
+    this.playTone(150, 'sawtooth', 0.42, 0.3, 35);
+  },
+
+  shatter() {
+    this.init();
+    this.playNoise(0.45, 0.3, 2200);
+    this.playTone(320, 'square', 0.2, 0.16, 70);
+  },
+
+  crash() {
+    this.init();
+    this.playNoise(0.6, 0.38, 320);
+    this.playTone(110, 'sawtooth', 0.5, 0.32, 32);
+  },
+
+  success() {
+    this.init();
+    const notes = [523.25, 659.25, 783.99, 1046.50];
+    notes.forEach((n, i) => this.playTone(n, 'triangle', 0.24, 0.2, null, i * 0.11));
+  },
+
+  loseLife() {
+    this.init();
+    this.playTone(330, 'sawtooth', 0.24, 0.2, 240, 0);
+    this.playTone(220, 'sawtooth', 0.38, 0.2, 130, 0.2);
+  },
+
+  levelWin() {
+    this.init();
+    const melody = [523.25, 659.25, 783.99, 1046.5, 783.99, 1046.5];
+    melody.forEach((n, i) => this.playTone(n, 'triangle', 0.26, 0.22, null, i * 0.14));
+  },
+
+  startMusic() {
+    this.stopMusic();
+    if (!this.musicEnabled) return;
+    const notes = [261.63, 329.63, 392.00, 329.63, 349.23, 440.00, 392.00, 329.63];
+    this.bgmTimer = setInterval(() => {
+      if (!this.musicEnabled) return;
+      const freq = notes[this.step % notes.length];
+      this.playTone(freq, 'sine', 0.28, 0.055);
+      if (this.step % 4 === 0) this.playTone(freq / 2, 'triangle', 0.35, 0.06);
+      this.step++;
+    }, 380);
+  },
+
+  stopMusic() {
+    if (this.bgmTimer) {
+      clearInterval(this.bgmTimer);
+      this.bgmTimer = null;
+    }
+  }
+};
+
+/* ============================================================================
+   4. PENYIMPANAN & SAMBUNGAN GOOGLE SHEETS
+   ============================================================================ */
+const StorageMgr = {
+  KEY_PROGRESS: 'ka_perasaan_progress_v1',
+  KEY_RECORDS: 'ka_perasaan_records_v1',
+  KEY_QUEUE: 'ka_perasaan_queue_v1',
+
+  getProgress() {
+    try {
+      const raw = localStorage.getItem(this.KEY_PROGRESS);
+      return raw ? JSON.parse(raw) : { unlocked: 1, stars: {} };
+    } catch (e) {
+      return { unlocked: 1, stars: {} };
+    }
+  },
+
+  saveProgress(level, stars) {
+    try {
+      const prog = this.getProgress();
+      if (level >= prog.unlocked && level < 3) prog.unlocked = level + 1;
+      prog.stars[level] = Math.max(prog.stars[level] || 0, stars);
+      localStorage.setItem(this.KEY_PROGRESS, JSON.stringify(prog));
+    } catch (e) {}
+  },
+
+  getLocalRecords() {
+    try {
+      const raw = localStorage.getItem(this.KEY_RECORDS);
+      return raw ? JSON.parse(raw) : [];
+    } catch (e) {
+      return [];
+    }
+  },
+
+  saveLocalRecord(rec) {
+    try {
+      const list = this.getLocalRecords();
+      list.unshift(rec);
+      localStorage.setItem(this.KEY_RECORDS, JSON.stringify(list.slice(0, 200)));
+    } catch (e) {}
+  },
+
+  enqueueRecord(rec) {
+    try {
+      const q = JSON.parse(localStorage.getItem(this.KEY_QUEUE) || '[]');
+      q.push(rec);
+      localStorage.setItem(this.KEY_QUEUE, JSON.stringify(q));
+    } catch (e) {}
+  },
+
+  async flushQueue() {
+    if (!SHEET_URL) return;
+    try {
+      const q = JSON.parse(localStorage.getItem(this.KEY_QUEUE) || '[]');
+      if (!q.length) return;
+      const remaining = [];
+      for (const item of q) {
+        const ok = await this.postToSheet(item);
+        if (!ok) remaining.push(item);
+      }
+      localStorage.setItem(this.KEY_QUEUE, JSON.stringify(remaining));
+    } catch (e) {}
+  },
+
+  async postToSheet(payload) {
+    if (!SHEET_URL) return false;
+    try {
+      const res = await fetch(SHEET_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify(payload)
+      });
+      if (!res.ok) return false;
+      const data = await res.json();
+      return Boolean(data && data.ok);
+    } catch (e) {
+      return false;
+    }
+  }
+};
+
+/* ============================================================================
+   5. DATA KANDUNGAN BAHASA MELAYU (30 SOALAN + NOTA + KUIZ MINI)
+   ============================================================================ */
+const LEVELS = {
+  1: [
+    { q: 'Ali mendapat hadiah basikal baharu daripada ayahnya. Apakah perasaan Ali?', o: ['Gembira', 'Marah', 'Takut'], a: 0, ex: 'Ali berasa gembira kerana menerima hadiah yang istimewa daripada ayahnya.' },
+    { q: 'Aina menangis kerana pensel warna kesayangannya hilang di sekolah. Aina berasa apa?', o: ['Bangga', 'Sedih', 'Teruja'], a: 1, ex: 'Aina berasa sedih apabila kehilangan barang yang disayanginya.' },
+    { q: 'Adik menjerit apabila melihat seekor lipas terbang ke arahnya. Apakah perasaan adik?', o: ['Tenang', 'Puas hati', 'Takut'], a: 2, ex: 'Adik berasa takut kerana terkejut melihat lipas yang terbang.' },
+    { q: 'Cikgu memuji lukisan Amir yang sangat cantik di hadapan kelas. Amir berasa apa?', o: ['Bangga', 'Kecewa', 'Cemas'], a: 0, ex: 'Amir berasa bangga kerana hasil kerjanya dipuji oleh guru.' },
+    { q: 'Muka abang merah padam apabila adik mengoyakkan buku latihannya. Apakah perasaan abang?', o: ['Rindu', 'Marah', 'Malu'], a: 1, ex: 'Abang berasa marah kerana buku latihannya telah dirosakkan.' },
+    { q: 'Siti menundukkan wajahnya apabila tersilap menyebut perkataan di hadapan perhimpunan. Siti berasa apa?', o: ['Teruja', 'Kasihan', 'Malu'], a: 2, ex: 'Siti berasa malu apabila melakukan kesilapan di hadapan ramai murid.' },
+    { q: 'Ibu memeluk adik dengan erat sebelum adik masuk ke kelas Tahun 1. Ibu sangat ____ akan adik.', o: ['Sayang', 'Marah', 'Cemas'], a: 0, ex: 'Perkataan sayang menunjukkan kasih ibu terhadap anaknya.' },
+    { q: 'Sudah sebulan Faris tidak berjumpa dengan datuk dan nenek di kampung. Faris berasa apa?', o: ['Puas hati', 'Rindu', 'Takut'], a: 1, ex: 'Faris berasa rindu kerana sudah lama tidak bertemu datuk dan neneknya.' },
+    { q: 'Hana tidak sabar menunggu hari esok untuk bercuti ke Pulau Langkawi. Apakah perasaan Hana?', o: ['Sedih', 'Kasihan', 'Teruja'], a: 2, ex: 'Hana berasa teruja kerana sangat seronok menantikan percutian keluarga.' },
+    { q: 'Nadia memberi makanan kepada anak kucing jalanan yang kelaparan itu. Nadia berasa apa?', o: ['Kasihan', 'Bangga', 'Marah'], a: 0, ex: 'Nadia berasa kasihan melihat keadaan anak kucing yang kelaparan.' }
+  ],
+  2: [
+    { q: 'Ibu berasa ____ apabila abang belum pulang ke rumah walaupun hari sudah senja.', o: ['Risau', 'Gembira', 'Bangga'], a: 0, ex: 'Perkataan risau sesuai digunakan apabila seseorang bimbang akan keselamatan orang lain.' },
+    { q: 'Pasukan bola sepak sekolah berasa ____ kerana gagal melayakkan diri ke peringkat akhir.', o: ['Teruja', 'Kecewa', 'Tenang'], a: 1, ex: 'Kecewa bermaksud rasa tidak puas atau sedih kerana harapan tidak tercapai.' },
+    { q: 'Suasana di tepi pantai pada waktu pagi membuatkan fikiran ayah berasa sangat ____.', o: ['Cemas', 'Marah', 'Tenang'], a: 2, ex: 'Tenang bermaksud berasa aman, damai dan tidak gelisah.' },
+    { q: 'Murid-murid berasa ____ apabila mendengar bunyi guruh yang sangat kuat di luar kelas.', o: ['Takut', 'Puas hati', 'Bangga'], a: 0, ex: 'Bunyi guruh yang kuat menimbulkan rasa takut dalam kalangan murid.' },
+    { q: 'Hakim berasa ____ dengan hasil binaan istana pasir yang dibuat bersama rakan-rakannya.', o: ['Sedih', 'Puas hati', 'Rindu'], a: 1, ex: 'Puas hati digunakan apabila seseorang gembira dengan hasil usaha yang berjaya.' },
+    { q: 'Puan Aminah sangat ____ apabila anaknya berjaya mendapat tempat pertama dalam pertandingan bercerita.', o: ['Malu', 'Cemas', 'Bangga'], a: 2, ex: 'Bangga sesuai menggambarkan perasaan gembira ibu atas kejayaan anaknya.' },
+    { q: 'Kita hendaklah sentiasa ____ akan kedua-dua ibu bapa yang telah membesarkan kita.', o: ['Sayang', 'Kecewa', 'Takut'], a: 0, ex: 'Sayang bermaksud mengasihi atau mencintai ibu bapa.' },
+    { q: 'Zul berasa ____ untuk berdiri di atas pentas kerana itu kali pertama dia menyanyi di hadapan orang ramai.', o: ['Marah', 'Malu', 'Kasihan'], a: 1, ex: 'Malu ialah perasaan segan apabila menjadi tumpuan ramai buat kali pertama.' },
+    { q: 'Para penumpang kapal berasa ____ apabila enjin bot tiba-tiba rosak di tengah lautan.', o: ['Gembira', 'Rindu', 'Cemas'], a: 2, ex: 'Cemas bermaksud berasa sangat bimbang dan gelisah ketika menghadapi bahaya.' },
+    { q: 'Kakak berasa ____ melihat pengemis tua yang duduk kesejukan di kaki lima kedai.', o: ['Kasihan', 'Teruja', 'Bangga'], a: 0, ex: 'Kasihan bermaksud rasa belas atau simpati terhadap kesusahan orang lain.' }
+  ],
+  3: [
+    { q: 'Kapten melihat sotong kurita gergasi muncul dari dasar laut menuju ke arah kapal. Apakah perasaan kapten?', o: ['Cemas', 'Malu', 'Puas hati'], a: 0, ex: 'Kapten berasa cemas kerana sotong kurita gergasi boleh membahayakan kapal.' },
+    { q: 'Selepas berjam-jam mencari, kelasi akhirnya menemui peti emas di dalam gua. Apakah perasaan mereka?', o: ['Kecewa', 'Teruja', 'Risau'], a: 1, ex: 'Kelasi berasa teruja kerana penat lelah mereka akhirnya membuahkan hasil.' },
+    { q: 'Apabila tembakan meriam tersasar jauh ke dalam laut, apakah perasaan penembak meriam itu?', o: ['Bangga', 'Tenang', 'Kecewa'], a: 2, ex: 'Mereka berasa kecewa kerana tembakan tidak mengenai sasaran.' },
+    { q: 'Walaupun kapal digoncang ombak dan sesungut kurita, kapten menarik nafas panjang supaya fikirannya kekal ____ membidik meriam.', o: ['Tenang', 'Marah', 'Rindu'], a: 0, ex: 'Kapten perlu kekal tenang agar dapat membidik meriam dengan tepat.' },
+    { q: 'Anak kapal teringat akan masakan ibu di kampung setelah tiga bulan belayar di laut. Mereka berasa apa?', o: ['Takut', 'Rindu', 'Puas hati'], a: 1, ex: 'Mereka berasa rindu kerana sudah lama berjauhan dengan keluarga di kampung.' },
+    { q: 'Kapten tersenyum melihat semua anak kapalnya bekerjasama mengisi peluru meriam. Kapten berasa ____.', o: ['Cemas', 'Sedih', 'Bangga'], a: 2, ex: 'Kapten berasa bangga melihat semangat kerjasama yang ditunjukkan oleh anak kapalnya.' },
+    { q: 'Burung kakak tua peliharaan kapten bersembunyi di bawah topi ketika ribut melanda. Kapten berasa sangat ____.', o: ['Risau', 'Gembira', 'Malu'], a: 0, ex: 'Kapten berasa risau memikirkan keselamatan haiwan peliharaannya.' },
+    { q: 'Kelasi muda itu tersipu-sipu apabila rakan-rakannya memuji keberaniannya mengendalikan meriam utama. Dia berasa ____.', o: ['Marah', 'Malu', 'Kecewa'], a: 1, ex: 'Dia berasa malu-malu apabila dipuji secara beramai-ramai oleh rakan-rakannya.' },
+    { q: 'Kapal berjaya melepasi kepungan raksasa laut dan berlabuh di Pulau Harta Karun. Semua anak kapal berasa ____.', o: ['Takut', 'Kasihan', 'Puas hati'], a: 2, ex: 'Mereka berasa puas hati kerana berjaya menamatkan pelayaran dengan selamat.' },
+    { q: 'Lanun itu tidak mahu mencederakan anak ikan lumba-lumba yang berenang di tepi kapal kerana berasa ____.', o: ['Kasihan', 'Marah', 'Cemas'], a: 0, ex: 'Lanun itu berasa kasihan melihat anak ikan lumba-lumba yang ketakutan.' }
+  ]
+};
+
+const NOTES_DATA = [
+  { emoji: '😊', word: 'Gembira', desc: 'Perasaan sangat suka dan seronok.', ex: 'Adik berasa gembira mendapat baju raya baharu.' },
+  { emoji: '😢', word: 'Sedih', desc: 'Perasaan berduka atau pilu hati.', ex: 'Siti berasa sedih apabila kucingnya sakit.' },
+  { emoji: '😠', word: 'Marah', desc: 'Perasaan tidak suka yang kuat kerana sesuatu kesalahan.', ex: 'Abang berasa marah apabila mainannya dirosakkan.' },
+  { emoji: '😨', word: 'Takut', desc: 'Perasaan gentar menghadapi bahaya atau benda menakutkan.', ex: 'Adik berasa takut apabila lampu terpadam.' },
+  { emoji: '😟', word: 'Risau', desc: 'Perasaan bimbang memikirkan sesuatu perkara.', ex: 'Ibu berasa risau kerana hujan turun dengan lebat.' },
+  { emoji: '😳', word: 'Malu', desc: 'Perasaan segan apabila menjadi perhatian orang ramai.', ex: 'Amir berasa malu ketika berucap di hadapan kelas.' },
+  { emoji: '🥹', word: 'Bangga', desc: 'Perasaan megah dan gembira atas sesuatu kejayaan.', ex: 'Ayah berasa bangga melihat kejayaan kakaknya.' },
+  { emoji: '😞', word: 'Kecewa', desc: 'Perasaan hampa kerana harapan tidak tercapai.', ex: 'Ali berasa kecewa kerana pasukannya kalah.' },
+  { emoji: '🥰', word: 'Sayang', desc: 'Perasaan kasih dan cinta akan seseorang atau sesuatu.', ex: 'Kita mesti sayang akan ahli keluarga kita.' },
+  { emoji: '🥺', word: 'Rindu', desc: 'Perasaan sangat ingin berjumpa dengan seseorang.', ex: 'Hana berasa rindu akan neneknya di kampung.' },
+  { emoji: '😰', word: 'Cemas', desc: 'Perasaan sangat bimbang dan gelisah ketika bahaya.', ex: 'Kapten berasa cemas melihat ombak besar.' },
+  { emoji: '🤩', word: 'Teruja', desc: 'Perasaan sangat seronok menantikan sesuatu.', ex: 'Murid-murid berasa teruja hendak melawat zoo.' },
+  { emoji: '😌', word: 'Tenang', desc: 'Perasaan aman, damai dan tidak gelisah.', ex: 'Suasana di tepi tasik membuatkan hati berasa tenang.' },
+  { emoji: '🥺', word: 'Kasihan', desc: 'Perasaan simpati melihat kesusahan orang atau haiwan.', ex: 'Nadia berasa kasihan melihat burung yang cedera itu.' },
+  { emoji: '😄', word: 'Puas hati', desc: 'Perasaan gembira dengan hasil usaha yang berjaya.', ex: 'Hakim berasa puas hati dengan lukisannya.' }
+];
+
+const MINI_QUIZ = [
+  { q: 'Apakah perasaan kamu apabila mendapat markah penuh dalam ujian?', o: ['Gembira', 'Sedih', 'Takut'], a: 0 },
+  { q: 'Lina berasa ____ apabila melihat anak anjing yang kesejukan di tepi jalan.', o: ['Bangga', 'Kasihan', 'Marah'], a: 1 },
+  { q: 'Ayah berasa ____ apabila kereta rosak di tengah lebuh raya pada waktu malam.', o: ['Teruja', 'Malu', 'Cemas'], a: 2 },
+  { q: 'Farah berasa ____ kerana berjaya menamatkan larian merentas desa.', o: ['Puas hati', 'Kecewa', 'Risau'], a: 0 },
+  { q: 'Kita berasa ____ apabila sudah lama tidak bertemu kawan baik.', o: ['Marah', 'Rindu', 'Takut'], a: 1 },
+  { q: 'Suasana pagi yang nyaman membuatkan fikiran kita berasa ____.', o: ['Cemas', 'Sedih', 'Tenang'], a: 2 }
+];
+
+/* ============================================================================
+   6. DUNIA 3D THREE.JS
+   ============================================================================ */
+const World3D = {
+  scene: null,
+  camera: null,
+  renderer: null,
+  seaGeo: null,
+  seaBasePos: null,
+  playerGroup: null,
+  sailMesh: null,
+  hullMeshes: [],
+  lanternLights: [],
+  avatarGroup: null,
+  parrotGroup: null,
+  cannonMesh: null,
+
+  // Kapal Peronda Maritim (Level 1)
+  navyGroup: null,
+  escortLeft: null,
+  escortRight: null,
+  navyLights: [],
+
+  // Kapal Lanun Musuh (Level 2) & Kesan Api
+  enemyPirateGroup: null,
+  enemyCannonMesh: null,
+  enemyFires: [],
+  playerFires: [],
+
+  // Bos Sotong Kurita Gergasi (Level 3)
+  krakenGroup: null,
+  krakenTentacles: [],
+  krakenAttackAnim: null,
+  krakenHitTimer: 0,
+
+  smokeParticles: [],
+  cannonBalls: [],
+  debrisList: [],
+  obstacles: [],
+  coins: [],
+  qObstacles: [],
+  scenery: [],
+  seagulls: [],
+  treasureIsland: null,
+
+  laneX: [-3.4, 0, 3.4],
+  currentLane: 1,
+  targetX: 0,
+  jumpVel: 0,
+  jumpY: 0,
+  isJumping: false,
+  speed: 18,
+  baseSpeed: 18,
+  flashTimer: 0,
+  shakeTimer: 0,
+  parrotReact: 0,
+  cutsceneMode: null,
+  cutsceneTimer: 0,
+  cutsceneVolleyFired: false,
+  cutsceneCallback: null,
+  playerSinkY: 0,
+  playerTiltZ: 0,
+
+  init() {
+    const canvas = document.getElementById('game-canvas');
+    this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    this.renderer.setSize(window.innerWidth, window.innerHeight);
+    this.renderer.shadowMap.enabled = true;
+    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    this.renderer.toneMappingExposure = 1.12;
+
+    this.scene = new THREE.Scene();
+    this.scene.background = new THREE.Color(0xd97724);
+    this.scene.fog = new THREE.FogExp2(0xc2591b, 0.011);
+
+    this.camera = new THREE.PerspectiveCamera(58, window.innerWidth / window.innerHeight, 0.1, 260);
+    // Kamera dinaikkan lebih tinggi supaya laluan & halangan di hadapan sangat jelas
+    this.camera.position.set(0, 8.4, 12.2);
+    this.camera.lookAt(0, 1.0, -14);
+
+    this.setupLights();
+    this.buildSkyAndSun();
+    this.buildSea();
+    this.buildPlayerShip();
+    this.buildNavyShips();
+    this.buildEnemyPirateShip();
+    this.buildKraken();
+    this.buildInitialScenery();
+
+    window.addEventListener('resize', () => this.onResize());
+  },
+
+  onResize() {
+    if (!this.renderer || !this.camera) return;
+    this.camera.aspect = window.innerWidth / window.innerHeight;
+    this.camera.updateProjectionMatrix();
+    this.renderer.setSize(window.innerWidth, window.innerHeight);
+  },
+
+  setupLights() {
+    const hemi = new THREE.HemisphereLight(0xffb76b, 0x16384a, 0.88);
+    this.scene.add(hemi);
+
+    const sunLight = new THREE.DirectionalLight(0xff9e44, 1.55);
+    sunLight.position.set(-22, 28, -55);
+    sunLight.castShadow = true;
+    sunLight.shadow.mapSize.width = 1024;
+    sunLight.shadow.mapSize.height = 1024;
+    sunLight.shadow.camera.near = 2;
+    sunLight.shadow.camera.far = 120;
+    const d = 24;
+    sunLight.shadow.camera.left = -d;
+    sunLight.shadow.camera.right = d;
+    sunLight.shadow.camera.top = d;
+    sunLight.shadow.camera.bottom = -d;
+    this.scene.add(sunLight);
+
+    const rimLight = new THREE.DirectionalLight(0x38bdf8, 0.45);
+    rimLight.position.set(18, 12, 22);
+    this.scene.add(rimLight);
+  },
+
+  buildSkyAndSun() {
+    const skyCanvas = document.createElement('canvas');
+    skyCanvas.width = 32;
+    skyCanvas.height = 256;
+    const ctx = skyCanvas.getContext('2d');
+    const grad = ctx.createLinearGradient(0, 0, 0, 256);
+    grad.addColorStop(0.0, '#1e1b4b');
+    grad.addColorStop(0.28, '#6d28d9');
+    grad.addColorStop(0.52, '#c2410c');
+    grad.addColorStop(0.76, '#f59e0b');
+    grad.addColorStop(1.0, '#fef08a');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, 32, 256);
+
+    const skyTex = new THREE.CanvasTexture(skyCanvas);
+    const skyGeo = new THREE.SphereGeometry(210, 24, 16);
+    const skyMat = new THREE.MeshBasicMaterial({ map: skyTex, side: THREE.BackSide, fog: false });
+    this.scene.add(new THREE.Mesh(skyGeo, skyMat));
+
+    const sunGeo = new THREE.CircleGeometry(18, 32);
+    const sunMat = new THREE.MeshBasicMaterial({ color: 0xfef08a, fog: false });
+    const sunMesh = new THREE.Mesh(sunGeo, sunMat);
+    sunMesh.position.set(-28, 22, -165);
+    this.scene.add(sunMesh);
+
+    const haloGeo = new THREE.CircleGeometry(32, 32);
+    const haloMat = new THREE.MeshBasicMaterial({ color: 0xfb923c, transparent: true, opacity: 0.28, fog: false });
+    const haloMesh = new THREE.Mesh(haloGeo, haloMat);
+    haloMesh.position.set(-28, 22, -166);
+    this.scene.add(haloMesh);
+  },
+
+  buildSea() {
+    this.seaGeo = new THREE.PlaneGeometry(180, 260, 44, 54);
+    this.seaGeo.rotateX(-Math.PI / 2);
+    const pos = this.seaGeo.attributes.position;
+    this.seaBasePos = new Float32Array(pos.array.length);
+    this.seaBasePos.set(pos.array);
+
+    const seaMat = new THREE.MeshStandardMaterial({
+      color: 0x0f4c5c,
+      emissive: 0x162936,
+      roughness: 0.28,
+      metalness: 0.35,
+      flatShading: true
+    });
+    const seaMesh = new THREE.Mesh(this.seaGeo, seaMat);
+    seaMesh.position.z = -70;
+    seaMesh.receiveShadow = true;
+    this.scene.add(seaMesh);
+
+    const sheenGeo = new THREE.PlaneGeometry(16, 220);
+    sheenGeo.rotateX(-Math.PI / 2);
+    const sheenMat = new THREE.MeshBasicMaterial({
+      color: 0xfbbf24,
+      transparent: true,
+      opacity: 0.14
+    });
+    const sheen = new THREE.Mesh(sheenGeo, sheenMat);
+    sheen.position.set(-6, 0.04, -75);
+    this.scene.add(sheen);
+  },
+
+  createWoodTexture(baseHex, lineHex) {
+    const c = document.createElement('canvas');
+    c.width = 128;
+    c.height = 128;
+    const ctx = c.getContext('2d');
+    ctx.fillStyle = baseHex;
+    ctx.fillRect(0, 0, 128, 128);
+    ctx.fillStyle = lineHex;
+    for (let y = 0; y < 128; y += 16) {
+      ctx.fillRect(0, y, 128, 2);
+      ctx.fillStyle = 'rgba(0,0,0,0.12)';
+      ctx.fillRect((y * 3) % 90, y + 4, 32, 3);
+      ctx.fillStyle = lineHex;
+    }
+    const tex = new THREE.CanvasTexture(c);
+    tex.wrapS = THREE.RepeatWrapping;
+    tex.wrapT = THREE.RepeatWrapping;
+    return tex;
+  },
+
+  createOnePieceSailTexture() {
+    const c = document.createElement('canvas');
+    c.width = 512;
+    c.height = 512;
+    const ctx = c.getContext('2d');
+
+    ctx.fillStyle = '#18181b';
+    ctx.fillRect(0, 0, 512, 512);
+    ctx.strokeStyle = '#d97706';
+    ctx.lineWidth = 18;
+    ctx.strokeRect(14, 14, 484, 484);
+
+    ctx.strokeStyle = '#f8fafc';
+    ctx.lineWidth = 26;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(115, 135);
+    ctx.lineTo(397, 395);
+    ctx.moveTo(397, 135);
+    ctx.lineTo(115, 395);
+    ctx.stroke();
+
+    const ends = [[115, 135], [397, 395], [397, 135], [115, 395]];
+    ctx.fillStyle = '#f8fafc';
+    ends.forEach(([x, y]) => {
+      ctx.beginPath();
+      ctx.arc(x - 8, y - 6, 15, 0, Math.PI * 2);
+      ctx.arc(x + 8, y + 6, 15, 0, Math.PI * 2);
+      ctx.fill();
+    });
+
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.arc(256, 255, 76, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillRect(216, 305, 80, 48);
+
+    ctx.fillStyle = '#18181b';
+    ctx.beginPath();
+    ctx.arc(228, 255, 20, 0, Math.PI * 2);
+    ctx.arc(284, 255, 20, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(256, 276);
+    ctx.lineTo(246, 294);
+    ctx.lineTo(266, 294);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.strokeStyle = '#18181b';
+    ctx.lineWidth = 5;
+    ctx.strokeRect(222, 314, 68, 28);
+    ctx.beginPath();
+    ctx.moveTo(244, 314);
+    ctx.lineTo(244, 342);
+    ctx.moveTo(268, 314);
+    ctx.lineTo(268, 342);
+    ctx.stroke();
+
+    ctx.fillStyle = '#facc15';
+    ctx.beginPath();
+    ctx.arc(256, 198, 72, Math.PI, 0);
+    ctx.fill();
+    ctx.fillStyle = '#dc2626';
+    ctx.fillRect(184, 184, 144, 16);
+    ctx.fillStyle = '#eab308';
+    ctx.beginPath();
+    ctx.ellipse(256, 200, 118, 16, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    return new THREE.CanvasTexture(c);
+  },
+
+  createEnemySailTexture() {
+    const c = document.createElement('canvas');
+    c.width = 512;
+    c.height = 512;
+    const ctx = c.getContext('2d');
+
+    ctx.fillStyle = '#450a0a';
+    ctx.fillRect(0, 0, 512, 512);
+    ctx.strokeStyle = '#ef4444';
+    ctx.lineWidth = 18;
+    ctx.strokeRect(14, 14, 484, 484);
+
+    // Pedang bersilang merah/putih
+    ctx.strokeStyle = '#fecaca';
+    ctx.lineWidth = 22;
+    ctx.beginPath();
+    ctx.moveTo(110, 120);
+    ctx.lineTo(402, 400);
+    ctx.moveTo(402, 120);
+    ctx.lineTo(110, 400);
+    ctx.stroke();
+
+    // Tengkorak lanun musuh
+    ctx.fillStyle = '#fef2f2';
+    ctx.beginPath();
+    ctx.arc(256, 245, 72, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillRect(218, 295, 76, 46);
+
+    ctx.fillStyle = '#450a0a';
+    ctx.beginPath();
+    ctx.arc(228, 245, 19, 0, Math.PI * 2);
+    ctx.arc(284, 245, 19, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Penutup mata lanun
+    ctx.fillStyle = '#09090b';
+    ctx.beginPath();
+    ctx.arc(284, 245, 24, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.lineWidth = 8;
+    ctx.strokeStyle = '#09090b';
+    ctx.beginPath();
+    ctx.moveTo(190, 210);
+    ctx.lineTo(322, 275);
+    ctx.stroke();
+
+    return new THREE.CanvasTexture(c);
+  },
+
+  buildPlayerShip() {
+    this.playerGroup = new THREE.Group();
+    this.hullMeshes = [];
+    this.lanternLights = [];
+
+    const woodTex = this.createWoodTexture('#7c3f1d', '#4a230e');
+    const darkWoodTex = this.createWoodTexture('#4a230e', '#291206');
+
+    const hullMat = new THREE.MeshStandardMaterial({ map: woodTex, roughness: 0.65 });
+    const trimMat = new THREE.MeshStandardMaterial({ map: darkWoodTex, roughness: 0.7 });
+    const goldMat = new THREE.MeshStandardMaterial({ color: 0xfbbf24, metalness: 0.65, roughness: 0.25 });
+
+    const hull = new THREE.Mesh(new THREE.BoxGeometry(2.5, 1.15, 5.2), hullMat);
+    hull.position.y = 0.6;
+    hull.castShadow = true;
+    hull.receiveShadow = true;
+    this.playerGroup.add(hull);
+    this.hullMeshes.push(hull);
+
+    const bow = new THREE.Mesh(new THREE.ConeGeometry(1.75, 2.2, 4), hullMat);
+    bow.rotation.x = -Math.PI / 2;
+    bow.rotation.y = Math.PI / 4;
+    bow.position.set(0, 0.72, -3.4);
+    bow.castShadow = true;
+    this.playerGroup.add(bow);
+    this.hullMeshes.push(bow);
+
+    const figurehead = new THREE.Mesh(new THREE.SphereGeometry(0.42, 14, 14), goldMat);
+    figurehead.position.set(0, 1.15, -4.35);
+    this.playerGroup.add(figurehead);
+
+    const cabin = new THREE.Mesh(new THREE.BoxGeometry(2.35, 0.95, 1.65), trimMat);
+    cabin.position.set(0, 1.35, 1.75);
+    cabin.castShadow = true;
+    this.playerGroup.add(cabin);
+    this.hullMeshes.push(cabin);
+
+    const stripeL = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.2, 5.25), goldMat);
+    stripeL.position.set(-1.26, 0.98, 0);
+    const stripeR = stripeL.clone();
+    stripeR.position.x = 1.26;
+    this.playerGroup.add(stripeL, stripeR);
+
+    const railL = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.34, 5.1), trimMat);
+    railL.position.set(-1.2, 1.3, 0);
+    const railR = railL.clone();
+    railR.position.x = 1.2;
+    this.playerGroup.add(railL, railR);
+
+    const lanternMat = new THREE.MeshBasicMaterial({ color: 0xfef08a });
+    [-0.95, 0.95].forEach((lx) => {
+      const lantern = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.3, 0.22), lanternMat);
+      lantern.position.set(lx, 1.95, 2.55);
+      this.playerGroup.add(lantern);
+      this.lanternLights.push(lantern);
+    });
+
+    const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.17, 5.4, 10), trimMat);
+    mast.position.set(0, 3.3, -0.45);
+    mast.castShadow = true;
+    this.playerGroup.add(mast);
+
+    const yardTop = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 3.6, 8), trimMat);
+    yardTop.rotation.z = Math.PI / 2;
+    yardTop.position.set(0, 5.05, -0.45);
+    this.playerGroup.add(yardTop);
+
+    const yardBot = yardTop.clone();
+    yardBot.position.y = 2.45;
+    this.playerGroup.add(yardBot);
+
+    const sailGeo = new THREE.PlaneGeometry(3.35, 2.55, 12, 10);
+    const sPos = sailGeo.attributes.position;
+    for (let i = 0; i < sPos.count; i++) {
+      const x = sPos.getX(i);
+      const y = sPos.getY(i);
+      const curve = Math.cos((x / 1.7) * (Math.PI / 2)) * Math.cos((y / 1.35) * (Math.PI / 2));
+      sPos.setZ(i, -curve * 0.58);
+    }
+    sailGeo.computeVertexNormals();
+    const sailMat = new THREE.MeshStandardMaterial({
+      map: this.createOnePieceSailTexture(),
+      side: THREE.DoubleSide,
+      roughness: 0.75
+    });
+    this.sailMesh = new THREE.Mesh(sailGeo, sailMat);
+    this.sailMesh.position.set(0, 3.75, -0.52);
+    this.sailMesh.castShadow = true;
+    this.playerGroup.add(this.sailMesh);
+
+    const flagMat = new THREE.MeshStandardMaterial({ color: 0xdc2626, side: THREE.DoubleSide });
+    const flag = new THREE.Mesh(new THREE.PlaneGeometry(0.95, 0.48), flagMat);
+    flag.position.set(0.48, 5.85, -0.45);
+    this.playerGroup.add(flag);
+
+    const ironMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, metalness: 0.75, roughness: 0.35 });
+    this.cannonMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.32, 1.55, 14), ironMat);
+    this.cannonMesh.rotation.x = Math.PI / 2.15;
+    this.cannonMesh.position.set(0, 1.45, -2.55);
+    this.playerGroup.add(this.cannonMesh);
+
+    [-1.15, 1.15].forEach((sx) => {
+      const sideCannon = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.16, 0.65, 8), ironMat);
+      sideCannon.rotation.z = Math.PI / 2;
+      sideCannon.position.set(sx, 1.12, -0.5);
+      this.playerGroup.add(sideCannon);
+    });
+
+    const wheel = new THREE.Mesh(new THREE.TorusGeometry(0.36, 0.06, 8, 16), goldMat);
+    wheel.position.set(0, 2.05, 1.25);
+    this.playerGroup.add(wheel);
+
+    this.buildAvatar('boy');
+    this.buildParrot();
+
+    this.scene.add(this.playerGroup);
+  },
+
+  /* --- MEMBINA KAPAL LANUN MUSUH (PERINGKAT 2) --- */
+  buildEnemyPirateShip() {
+    this.enemyPirateGroup = new THREE.Group();
+
+    const darkHullTex = this.createWoodTexture('#27272a', '#09090b');
+    const redWoodTex = this.createWoodTexture('#7f1d1d', '#450a0a');
+
+    const hullMat = new THREE.MeshStandardMaterial({ map: darkHullTex, roughness: 0.65 });
+    const trimMat = new THREE.MeshStandardMaterial({ map: redWoodTex, roughness: 0.7 });
+    const crimsonMat = new THREE.MeshStandardMaterial({ color: 0xdc2626, metalness: 0.45, roughness: 0.3 });
+
+    const hull = new THREE.Mesh(new THREE.BoxGeometry(3.2, 1.45, 6.8), hullMat);
+    hull.position.y = 0.75;
+    hull.castShadow = true;
+    this.enemyPirateGroup.add(hull);
+
+    // Haluan menghadap arah +Z (menghadap ke arah kapal pemain)
+    const bow = new THREE.Mesh(new THREE.ConeGeometry(2.25, 2.8, 4), hullMat);
+    bow.rotation.x = Math.PI / 2;
+    bow.rotation.y = Math.PI / 4;
+    bow.position.set(0, 0.85, 4.5);
+    bow.castShadow = true;
+    this.enemyPirateGroup.add(bow);
+
+    const skullRam = new THREE.Mesh(new THREE.SphereGeometry(0.55, 14, 14), crimsonMat);
+    skullRam.position.set(0, 1.35, 5.75);
+    this.enemyPirateGroup.add(skullRam);
+
+    const cabin = new THREE.Mesh(new THREE.BoxGeometry(3.0, 1.25, 2.1), trimMat);
+    cabin.position.set(0, 1.65, -2.2);
+    this.enemyPirateGroup.add(cabin);
+
+    const stripeL = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.26, 6.85), crimsonMat);
+    stripeL.position.set(-1.62, 1.25, 0);
+    const stripeR = stripeL.clone();
+    stripeR.position.x = 1.62;
+    this.enemyPirateGroup.add(stripeL, stripeR);
+
+    // Tiang Layar Utama Kapal Musuh
+    const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.22, 6.8, 10), trimMat);
+    mast.position.set(0, 4.1, 0.3);
+    this.enemyPirateGroup.add(mast);
+
+    const yardTop = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 4.6, 8), trimMat);
+    yardTop.rotation.z = Math.PI / 2;
+    yardTop.position.set(0, 6.3, 0.3);
+    this.enemyPirateGroup.add(yardTop);
+
+    const yardBot = yardTop.clone();
+    yardBot.position.y = 3.1;
+    this.enemyPirateGroup.add(yardBot);
+
+    const sailGeo = new THREE.PlaneGeometry(4.3, 3.1, 12, 10);
+    const sPos = sailGeo.attributes.position;
+    for (let i = 0; i < sPos.count; i++) {
+      const x = sPos.getX(i);
+      const y = sPos.getY(i);
+      const curve = Math.cos((x / 2.2) * (Math.PI / 2)) * Math.cos((y / 1.6) * (Math.PI / 2));
+      sPos.setZ(i, curve * 0.65);
+    }
+    sailGeo.computeVertexNormals();
+    const sailMat = new THREE.MeshStandardMaterial({
+      map: this.createEnemySailTexture(),
+      side: THREE.DoubleSide,
+      roughness: 0.75
+    });
+    const enemySail = new THREE.Mesh(sailGeo, sailMat);
+    enemySail.position.set(0, 4.7, 0.38);
+    this.enemyPirateGroup.add(enemySail);
+
+    // Meriam Hadapan & Sisi Kapal Musuh
+    const ironMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, metalness: 0.85, roughness: 0.25 });
+    this.enemyCannonMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.4, 1.9, 14), ironMat);
+    this.enemyCannonMesh.rotation.x = -Math.PI / 2.15;
+    this.enemyCannonMesh.position.set(0, 1.75, 3.4);
+    this.enemyPirateGroup.add(this.enemyCannonMesh);
+
+    [-1.45, 1.45].forEach((sx) => {
+      const sideC = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.22, 0.9, 10), ironMat);
+      sideC.rotation.z = Math.PI / 2;
+      sideC.position.set(sx, 1.35, 1.2);
+      this.enemyPirateGroup.add(sideC);
+    });
+
+    this.enemyPirateGroup.position.set(0, 0, -45);
+    this.enemyPirateGroup.visible = false;
+    this.scene.add(this.enemyPirateGroup);
+  },
+
+  /* --- KESAN API PADA KAPAL (LEVEL 2) --- */
+  addFireOnShip(isEnemy, localPos) {
+    const targetGroup = isEnemy ? this.enemyPirateGroup : this.playerGroup;
+    const fireGroup = new THREE.Group();
+    fireGroup.position.copy(localPos);
+
+    const outerMat = new THREE.MeshBasicMaterial({ color: 0xf97316, transparent: true, opacity: 0.92 });
+    const innerMat = new THREE.MeshBasicMaterial({ color: 0xfef08a, transparent: true, opacity: 0.95 });
+
+    const outerCone = new THREE.Mesh(new THREE.ConeGeometry(0.65, 1.85, 8), outerMat);
+    outerCone.position.y = 0.85;
+    const innerCone = new THREE.Mesh(new THREE.ConeGeometry(0.36, 1.25, 8), innerMat);
+    innerCone.position.y = 0.65;
+
+    fireGroup.add(outerCone, innerCone);
+    targetGroup.add(fireGroup);
+
+    const record = {
+      group: fireGroup,
+      outer: outerCone,
+      inner: innerCone,
+      phase: Math.random() * Math.PI * 2,
+      worldOrigin: localPos
+    };
+
+    if (isEnemy) this.enemyFires.push(record);
+    else this.playerFires.push(record);
+  },
+
+  clearShipFires() {
+    this.enemyFires.forEach((f) => this.enemyPirateGroup.remove(f.group));
+    this.playerFires.forEach((f) => this.playerGroup.remove(f.group));
+    this.enemyFires = [];
+    this.playerFires = [];
+  },
+
+  buildAvatar(gender) {
+    if (this.avatarGroup) this.playerGroup.remove(this.avatarGroup);
+    this.avatarGroup = new THREE.Group();
+    this.avatarGroup.position.set(0, 1.85, 1.65);
+
+    const skinMat = new THREE.MeshStandardMaterial({ color: 0xfcd5b5 });
+    const coatMat = new THREE.MeshStandardMaterial({ color: gender === 'girl' ? 0xdb2777 : 0xdc2626 });
+    const darkMat = new THREE.MeshStandardMaterial({ color: 0x1e293b });
+    const goldMat = new THREE.MeshStandardMaterial({ color: 0xfacc15 });
+
+    const body = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.28, 0.62, 10), coatMat);
+    body.position.y = 0.35;
+    this.avatarGroup.add(body);
+
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.25, 14, 14), skinMat);
+    head.position.y = 0.85;
+    this.avatarGroup.add(head);
+
+    if (gender === 'girl') {
+      const hijabMat = new THREE.MeshStandardMaterial({ color: 0xfef3c7 });
+      const hijab = new THREE.Mesh(new THREE.SphereGeometry(0.275, 14, 14), hijabMat);
+      hijab.position.set(0, 0.84, 0.03);
+      const hijabDrape = new THREE.Mesh(new THREE.ConeGeometry(0.31, 0.55, 12), hijabMat);
+      hijabDrape.position.set(0, 0.58, 0.04);
+      this.avatarGroup.add(hijab, hijabDrape);
+    }
+
+    const hatBrim = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.42, 0.06, 14), darkMat);
+    hatBrim.position.y = 1.06;
+    const hatTop = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.28, 0.24, 12), darkMat);
+    hatTop.position.y = 1.18;
+    const hatEmblem = new THREE.Mesh(new THREE.SphereGeometry(0.06, 8, 8), goldMat);
+    hatEmblem.position.set(0, 1.16, 0.24);
+    this.avatarGroup.add(hatBrim, hatTop, hatEmblem);
+
+    const armL = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.45, 8), coatMat);
+    armL.rotation.x = -Math.PI / 3;
+    armL.position.set(-0.26, 0.52, -0.22);
+    const armR = armL.clone();
+    armR.position.x = 0.26;
+    this.avatarGroup.add(armL, armR);
+
+    this.playerGroup.add(this.avatarGroup);
+  },
+
+  buildParrot() {
+    this.parrotGroup = new THREE.Group();
+    this.parrotGroup.position.set(1.12, 1.58, -0.8);
+
+    const bodyMat = new THREE.MeshStandardMaterial({ color: 0x22c55e });
+    const wingMat = new THREE.MeshStandardMaterial({ color: 0x3b82f6 });
+    const beakMat = new THREE.MeshStandardMaterial({ color: 0xfacc15 });
+
+    const body = new THREE.Mesh(new THREE.SphereGeometry(0.18, 10, 10), bodyMat);
+    body.scale.set(0.9, 1.25, 0.9);
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.13, 10, 10), bodyMat);
+    head.position.set(0, 0.22, -0.04);
+    const beak = new THREE.Mesh(new THREE.ConeGeometry(0.05, 0.12, 8), beakMat);
+    beak.rotation.x = -Math.PI / 2;
+    beak.position.set(0, 0.21, -0.18);
+
+    const wingL = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.22, 0.16), wingMat);
+    wingL.position.set(-0.16, 0.02, 0);
+    wingL.name = 'wingL';
+    const wingR = wingL.clone();
+    wingR.position.x = 0.16;
+    wingR.name = 'wingR';
+
+    this.parrotGroup.add(body, head, beak, wingL, wingR);
+    this.playerGroup.add(this.parrotGroup);
+  },
+
+  /* --- MEMBINA MODEL 3D SOTONG KURITA GERGASI (BOS PERINGKAT 3) --- */
+  buildKraken() {
+    this.krakenGroup = new THREE.Group();
+    this.krakenTentacles = [];
+
+    const skinMat = new THREE.MeshStandardMaterial({
+      color: 0x7e22ce,
+      roughness: 0.42,
+      metalness: 0.15
+    });
+    const darkSkinMat = new THREE.MeshStandardMaterial({
+      color: 0x4c1d95,
+      roughness: 0.5
+    });
+    const suckerMat = new THREE.MeshStandardMaterial({
+      color: 0xf472b6,
+      roughness: 0.35
+    });
+    const eyeWhiteMat = new THREE.MeshBasicMaterial({ color: 0xfef08a });
+    const pupilMat = new THREE.MeshBasicMaterial({ color: 0x09090b });
+
+    const mantle = new THREE.Mesh(new THREE.SphereGeometry(4.4, 24, 24), skinMat);
+    mantle.scale.set(1.05, 1.55, 0.95);
+    mantle.position.set(0, 7.2, 0);
+    mantle.castShadow = true;
+    this.krakenGroup.add(mantle);
+
+    const finGeo = new THREE.ConeGeometry(2.6, 4.5, 4);
+    const finL = new THREE.Mesh(finGeo, darkSkinMat);
+    finL.position.set(-4.3, 8.8, -0.3);
+    finL.rotation.z = Math.PI / 3.2;
+    const finR = finL.clone();
+    finR.position.x = 4.3;
+    finR.rotation.z = -Math.PI / 3.2;
+    this.krakenGroup.add(finL, finR);
+
+    for (let s = 0; s < 8; s++) {
+      const spot = new THREE.Mesh(new THREE.SphereGeometry(0.55, 10, 10), darkSkinMat);
+      const ang = (s / 8) * Math.PI * 2;
+      spot.position.set(Math.cos(ang) * 3.8, 7.5 + (s % 3) * 1.4, Math.sin(ang) * 3.5);
+      this.krakenGroup.add(spot);
+    }
+
+    [-1.65, 1.65].forEach((ex) => {
+      const eyeGroup = new THREE.Group();
+      eyeGroup.position.set(ex, 4.4, 3.6);
+
+      const eyeBall = new THREE.Mesh(new THREE.SphereGeometry(0.95, 16, 16), eyeWhiteMat);
+      const pupil = new THREE.Mesh(new THREE.BoxGeometry(0.28, 1.15, 0.35), pupilMat);
+      pupil.position.z = 0.85;
+
+      const brow = new THREE.Mesh(new THREE.BoxGeometry(2.1, 0.42, 0.75), darkSkinMat);
+      brow.position.set(0, 0.78, 0.45);
+      brow.rotation.z = ex < 0 ? -0.32 : 0.32;
+
+      eyeGroup.add(eyeBall, pupil, brow);
+      this.krakenGroup.add(eyeGroup);
+    });
+
+    const tentacleAngles = [-1.15, -0.82, -0.48, -0.16, 0.16, 0.48, 0.82, 1.15];
+    tentacleAngles.forEach((ang, idx) => {
+      const rootPivot = new THREE.Group();
+      const radiusX = Math.sin(ang) * 4.4;
+      const radiusZ = Math.cos(ang) * 3.2;
+      rootPivot.position.set(radiusX, 1.2, radiusZ);
+      rootPivot.rotation.y = ang * 0.45;
+
+      const segments = [];
+      let parentNode = rootPivot;
+      const numSegs = 7;
+
+      for (let seg = 0; seg < numSegs; seg++) {
+        const segPivot = new THREE.Group();
+        if (seg > 0) segPivot.position.set(0, 1.55, 0);
+
+        const rBot = Math.max(0.22, 0.82 - seg * 0.085);
+        const rTop = Math.max(0.14, 0.72 - seg * 0.085);
+        const cyl = new THREE.Mesh(new THREE.CylinderGeometry(rTop, rBot, 1.75, 10), skinMat);
+        cyl.position.y = 0.85;
+        cyl.castShadow = true;
+        segPivot.add(cyl);
+
+        const sucker = new THREE.Mesh(new THREE.SphereGeometry(rBot * 0.42, 8, 8), suckerMat);
+        sucker.position.set(0, 0.85, rBot * 0.78);
+        segPivot.add(sucker);
+
+        parentNode.add(segPivot);
+        segments.push(segPivot);
+        parentNode = segPivot;
+      }
+
+      this.krakenGroup.add(rootPivot);
+      this.krakenTentacles.push({
+        root: rootPivot,
+        segments,
+        baseAngle: ang,
+        phaseOffset: idx * 0.85
+      });
+    });
+
+    this.krakenGroup.position.set(0, -18, -16.5);
+    this.krakenGroup.visible = false;
+    this.scene.add(this.krakenGroup);
+  },
+
+  createPatrolBoatModel(scale = 1) {
+    const group = new THREE.Group();
+    const greyMat = new THREE.MeshStandardMaterial({ color: 0x64748b, roughness: 0.45, metalness: 0.35 });
+    const darkGrey = new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.5 });
+    const whiteMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.4 });
+    const stripeRed = new THREE.MeshStandardMaterial({ color: 0xdc2626 });
+    const stripeBlue = new THREE.MeshStandardMaterial({ color: 0x1d4ed8 });
+
+    const hull = new THREE.Mesh(new THREE.BoxGeometry(2.5, 1.05, 5.8), greyMat);
+    hull.position.y = 0.55;
+    hull.castShadow = true;
+    group.add(hull);
+
+    const bow = new THREE.Mesh(new THREE.ConeGeometry(1.75, 2.3, 4), greyMat);
+    bow.rotation.x = -Math.PI / 2;
+    bow.rotation.y = Math.PI / 4;
+    bow.position.set(0, 0.62, -3.7);
+    group.add(bow);
+
+    const s1L = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.25, 1.4), stripeRed);
+    s1L.position.set(-1.26, 0.72, -1.6);
+    s1L.rotation.x = 0.25;
+    const s2L = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.2, 1.4), stripeBlue);
+    s2L.position.set(-1.26, 0.62, -1.25);
+    s2L.rotation.x = 0.25;
+    const s1R = s1L.clone(); s1R.position.x = 1.26;
+    const s2R = s2L.clone(); s2R.position.x = 1.26;
+    group.add(s1L, s2L, s1R, s2R);
+
+    const bridge = new THREE.Mesh(new THREE.BoxGeometry(1.75, 1.15, 2.1), whiteMat);
+    bridge.position.set(0, 1.5, 0.3);
+    const windowStrip = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.32, 1.2), darkGrey);
+    windowStrip.position.set(0, 1.75, -0.2);
+    const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.12, 1.6, 8), darkGrey);
+    mast.position.set(0, 2.6, 0.4);
+    group.add(bridge, windowStrip, mast);
+
+    const turret = new THREE.Mesh(new THREE.SphereGeometry(0.32, 10, 10), darkGrey);
+    turret.position.set(0, 1.15, -2.1);
+    const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.09, 1.1, 8), darkGrey);
+    barrel.rotation.x = Math.PI / 2;
+    barrel.position.set(0, 1.2, -2.75);
+    group.add(turret, barrel);
+
+    const sirenRed = new THREE.Mesh(new THREE.SphereGeometry(0.18, 8, 8), new THREE.MeshBasicMaterial({ color: 0xef4444 }));
+    sirenRed.position.set(-0.45, 2.25, 0.1);
+    const sirenBlue = new THREE.Mesh(new THREE.SphereGeometry(0.18, 8, 8), new THREE.MeshBasicMaterial({ color: 0x3b82f6 }));
+    sirenBlue.position.set(0.45, 2.25, 0.1);
+    group.add(sirenRed, sirenBlue);
+
+    group.scale.setScalar(scale);
+    return { group, sirenRed, sirenBlue };
+  },
+
+  buildNavyShips() {
+    this.navyLights = [];
+    const main = this.createPatrolBoatModel(1.05);
+    this.navyGroup = main.group;
+    this.navyGroup.position.set(0, 0, 10.5);
+    this.scene.add(this.navyGroup);
+    this.navyLights.push({ red: main.sirenRed, blue: main.sirenBlue });
+
+    const left = this.createPatrolBoatModel(0.95);
+    this.escortLeft = left.group;
+    this.escortLeft.visible = false;
+    this.scene.add(this.escortLeft);
+    this.navyLights.push({ red: left.sirenRed, blue: left.sirenBlue });
+
+    const right = this.createPatrolBoatModel(0.95);
+    this.escortRight = right.group;
+    this.escortRight.visible = false;
+    this.scene.add(this.escortRight);
+    this.navyLights.push({ red: right.sirenRed, blue: right.sirenBlue });
+  },
+
+  buildInitialScenery() {
+    const rockMat = new THREE.MeshStandardMaterial({ color: 0x78350f, roughness: 0.9, flatShading: true });
+    const sandMat = new THREE.MeshStandardMaterial({ color: 0xfde68a, roughness: 0.85 });
+    const trunkMat = new THREE.MeshStandardMaterial({ color: 0x5c2d16 });
+    const leafMat = new THREE.MeshStandardMaterial({ color: 0x15803d, flatShading: true });
+    const coralMat = new THREE.MeshStandardMaterial({ color: 0xf43f5e, flatShading: true });
+
+    for (let i = 0; i < 16; i++) {
+      const island = new THREE.Group();
+      const side = i % 2 === 0 ? -1 : 1;
+      const distX = side * (13 + Math.random() * 14);
+      const posZ = -i * 15 + 10;
+
+      const base = new THREE.Mesh(new THREE.CylinderGeometry(2.6, 4.4, 1.4, 7), sandMat);
+      base.position.y = 0.3;
+      island.add(base);
+
+      if (i % 3 === 0) {
+        const mesa = new THREE.Mesh(new THREE.CylinderGeometry(1.8, 3.2, 5.5 + Math.random() * 3, 6), rockMat);
+        mesa.position.y = 2.8;
+        island.add(mesa);
+      } else {
+        const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.26, 3.2, 6), trunkMat);
+        trunk.position.y = 2.1;
+        trunk.rotation.z = side * -0.15;
+        island.add(trunk);
+
+        for (let l = 0; l < 5; l++) {
+          const leaf = new THREE.Mesh(new THREE.ConeGeometry(0.55, 1.8, 4), leafMat);
+          leaf.position.set(side * -0.25, 3.6, 0);
+          leaf.rotation.z = Math.PI / 2.4;
+          leaf.rotation.y = (l / 5) * Math.PI * 2;
+          island.add(leaf);
+        }
+
+        const coral = new THREE.Mesh(new THREE.DodecahedronGeometry(0.65, 0), coralMat);
+        coral.position.set(-side * 2.1, 0.5, 0.8);
+        island.add(coral);
+      }
+
+      island.position.set(distX, 0, posZ);
+      this.scene.add(island);
+      this.scenery.push(island);
+    }
+
+    const gullMat = new THREE.MeshBasicMaterial({ color: 0xf8fafc, side: THREE.DoubleSide });
+    for (let g = 0; g < 7; g++) {
+      const gull = new THREE.Group();
+      const wL = new THREE.Mesh(new THREE.PlaneGeometry(0.65, 0.22), gullMat);
+      wL.position.x = -0.32;
+      wL.name = 'gullL';
+      const wR = new THREE.Mesh(new THREE.PlaneGeometry(0.65, 0.22), gullMat);
+      wR.position.x = 0.32;
+      wR.name = 'gullR';
+      gull.add(wL, wR);
+      gull.position.set((Math.random() - 0.5) * 32, 9 + Math.random() * 6, -20 - g * 18);
+      this.scene.add(gull);
+      this.seagulls.push(gull);
+    }
+  },
+
+  resetVoyage(level) {
+    this.currentLane = 1;
+    this.targetX = 0;
+    this.playerGroup.position.set(0, 0, 0);
+    this.playerGroup.rotation.set(0, 0, 0);
+    this.playerSinkY = 0;
+    this.playerTiltZ = 0;
+    this.jumpY = 0;
+    this.jumpVel = 0;
+    this.isJumping = false;
+    this.baseSpeed = 18;
+    this.speed = this.baseSpeed;
+    this.flashTimer = 0;
+    this.shakeTimer = 0;
+    this.cutsceneVolleyFired = false;
+    this.krakenAttackAnim = null;
+    this.krakenHitTimer = 0;
+    this.clearShipFires();
+
+    if (level === 1) {
+      this.scene.fog.color.setHex(0xc2591b);
+      this.scene.fog.density = 0.010;
+    } else if (level === 2) {
+      this.scene.fog.color.setHex(0x9a3412);
+      this.scene.fog.density = 0.011;
+    } else {
+      this.scene.fog.color.setHex(0x581c87);
+      this.scene.fog.density = 0.013;
+    }
+
+    [...this.obstacles, ...this.coins, ...this.qObstacles, ...this.cannonBalls, ...this.debrisList].forEach((obj) => {
+      this.scene.remove(obj.mesh || obj);
+    });
+    this.obstacles = [];
+    this.coins = [];
+    this.qObstacles = [];
+    this.cannonBalls = [];
+    this.debrisList = [];
+
+    if (this.treasureIsland) {
+      this.scene.remove(this.treasureIsland);
+      this.treasureIsland = null;
+    }
+
+    if (level === 3) {
+      this.navyGroup.visible = false;
+      this.escortLeft.visible = false;
+      this.escortRight.visible = false;
+      this.enemyPirateGroup.visible = false;
+      this.krakenGroup.visible = true;
+      this.krakenGroup.position.set(0, -17, -16.5);
+      this.krakenGroup.rotation.set(0, 0, 0);
+    } else if (level === 2) {
+      this.navyGroup.visible = false;
+      this.escortLeft.visible = false;
+      this.escortRight.visible = false;
+      this.krakenGroup.visible = false;
+      this.enemyPirateGroup.visible = true;
+      this.enemyPirateGroup.position.set(0, 0, -48);
+      this.enemyPirateGroup.rotation.set(0, 0, 0);
+    } else {
+      this.krakenGroup.visible = false;
+      this.enemyPirateGroup.visible = false;
+      this.navyGroup.visible = true;
+      this.navyGroup.position.set(0, 0, 10.5);
+      this.navyGroup.rotation.set(0, 0, 0);
+      this.escortLeft.visible = false;
+      this.escortRight.visible = false;
+    }
+
+    this.updateShipDamageVisual(3);
+  },
+
+  /* --- BABAK SINEMATIK BERTEMU KAPAL LANUN MUSUH (PERINGKAT 2) --- */
+  startPirateEncounterCutscene(onComplete) {
+    this.cutsceneMode = 'pirate_encounter';
+    this.cutsceneTimer = 3.8;
+    this.cutsceneCallback = onComplete;
+    this.enemyPirateGroup.visible = true;
+    this.enemyPirateGroup.position.set(-4.5, 0, -46);
+    AudioSys.pirateHorn();
+    this.showBanner('🏴‍☠️ KAPAL LANUN MUSUH MENGHADANG LALUAN!', 'Sediakan meriam! Pertempuran meriam bersemuka akan bermula!');
+  },
+
+  /* --- BABAK SINEMATIK SOTONG KURITA MUNCUL DARI LAUT (PERINGKAT 3) --- */
+  startKrakenEntranceCutscene(onComplete) {
+    this.cutsceneMode = 'kraken_entrance';
+    this.cutsceneTimer = 3.6;
+    this.cutsceneCallback = onComplete;
+    this.krakenGroup.visible = true;
+    this.krakenGroup.position.set(0, -17, -16.5);
+    AudioSys.krakenRoar();
+    this.showBanner('🐙 SOTONG KURITA GERGASI MUNCUL DARI LAUT!', 'Kapal lanun terhenti! Bidik meriam & jawab soalan untuk menembak!');
+  },
+
+  startEntranceCutscene() {
+    this.cutsceneMode = 'entrance';
+    this.cutsceneTimer = 2.6;
+    this.navyGroup.position.set(0, 0, 11.2);
+    AudioSys.siren();
+    this.showBanner('🚨 PERONDA MARITIM MENGESAN KAPAL!', 'Pecut laju, Kapten! Elak halangan dan jawab soalan!');
+  },
+
+  startVictoryCutscene(isGrandWin, onComplete) {
+    this.cutsceneMode = 'victory';
+    this.cutsceneTimer = 3.5;
+    this.cutsceneCallback = onComplete;
+    AudioSys.levelWin();
+
+    if (Game.level === 2) {
+      this.showBanner('🔥 KAPAL LANUN MUSUH TERBAKAR & KARAM!', 'Syabas, Kapten! Kamu memenangi pertempuran meriam!');
+    } else if (isGrandWin) {
+      this.spawnTreasureIsland();
+      this.showBanner('🐙 SOTONG KURITA BERUNDUR KE DASAR LAUT!', 'Tahniah, Kapten! Pulau Harta Karun menanti di hadapan!');
+    } else {
+      this.showBanner('💨 KAPAL LANUN MEMECUT LAJU!', 'Hebat, Kapten! Peronda Maritim jauh ketinggalan di belakang!');
+    }
+  },
+
+  startCaptureCutscene(onComplete) {
+    if (Game.level === 2) {
+      this.cutsceneMode = 'pirate_defeat';
+      this.cutsceneTimer = 3.6;
+      this.cutsceneVolleyFired = false;
+      this.cutsceneCallback = onComplete;
+      AudioSys.crash();
+      this.showBanner('🔥 KAPAL LANUN KAMU TENGGELAM!', 'Nyawa kapal telah habis! Cuba lagi, Kapten!');
+      return;
+    }
+
+    if (Game.level === 3) {
+      this.cutsceneMode = 'kraken_defeat';
+      this.cutsceneTimer = 3.6;
+      this.cutsceneVolleyFired = false;
+      this.cutsceneCallback = onComplete;
+      AudioSys.krakenRoar();
+      this.showBanner('🐙 KAPAL LANUN DIHANCURKAN SOTONG KURITA!', 'Nyawa kapal telah habis! Cuba lagi, Kapten!');
+      return;
+    }
+
+    this.cutsceneMode = 'capture';
+    this.cutsceneTimer = 4.2;
+    this.cutsceneVolleyFired = false;
+    this.cutsceneCallback = onComplete;
+
+    this.escortLeft.visible = true;
+    this.escortRight.visible = true;
+    this.escortLeft.position.set(-14, 0, -2);
+    this.escortRight.position.set(14, 0, -2);
+
+    AudioSys.siren();
+    this.showBanner('🚨 KAPAL LANUN DIKEPUNG MARITIM!', 'Nyawa telah habis! Peronda Maritim melepaskan tembakan!');
+  },
+
+  showBanner(title, sub) {
+    const banner = document.getElementById('cinematic-banner');
+    document.getElementById('cinematic-title').textContent = title;
+    document.getElementById('cinematic-sub').textContent = sub;
+    banner.classList.remove('hidden');
+  },
+
+  hideBanner() {
+    document.getElementById('cinematic-banner').classList.add('hidden');
+  },
+
+  spawnTreasureIsland() {
+    const grp = new THREE.Group();
+    const sand = new THREE.Mesh(new THREE.CylinderGeometry(7, 10, 2, 12), new THREE.MeshStandardMaterial({ color: 0xfde68a }));
+    sand.position.y = 0.5;
+    const hill = new THREE.Mesh(new THREE.ConeGeometry(5.5, 6, 8), new THREE.MeshStandardMaterial({ color: 0x16a34a, flatShading: true }));
+    hill.position.y = 3.8;
+    const chest = new THREE.Mesh(new THREE.BoxGeometry(1.8, 1.2, 1.2), new THREE.MeshStandardMaterial({ color: 0xd97706, metalness: 0.5 }));
+    chest.position.set(0, 1.8, 4.5);
+    grp.add(sand, hill, chest);
+    grp.position.set(0, 0, -34);
+    this.scene.add(grp);
+    this.treasureIsland = grp;
+  },
+
+  moveLane(dir) {
+    if (Game.level === 2 || Game.level === 3) return;
+    const next = Math.max(0, Math.min(2, this.currentLane + dir));
+    if (next !== this.currentLane) {
+      this.currentLane = next;
+      this.targetX = this.laneX[this.currentLane];
+      AudioSys.splash();
+    }
+  },
+
+  setLane(laneIdx) {
+    if (Game.level === 2 || Game.level === 3) return;
+    this.currentLane = Math.max(0, Math.min(2, laneIdx));
+    this.targetX = this.laneX[this.currentLane];
+  },
+
+  jump() {
+    if (Game.level === 2 || Game.level === 3) return;
+    if (!this.isJumping && !this.cutsceneMode) {
+      this.isJumping = true;
+      this.jumpVel = 9.5;
+      AudioSys.splash();
+    }
+  },
+
+  updateShipDamageVisual(lives) {
+    const tint = lives === 3 ? 0xffffff : lives === 2 ? 0xfca5a5 : 0xef4444;
+    this.hullMeshes.forEach((m) => m.material.color.setHex(tint));
+  },
+
+  spawnParticle(pos, colorHex, size = 0.25, velY = 2.5, life = 0.8) {
+    const mesh = new THREE.Mesh(
+      new THREE.DodecahedronGeometry(size, 0),
+      new THREE.MeshBasicMaterial({ color: colorHex, transparent: true, opacity: 0.9 })
+    );
+    mesh.position.copy(pos);
+    this.scene.add(mesh);
+    this.smokeParticles.push({
+      mesh,
+      vx: (Math.random() - 0.5) * 3.5,
+      vy: velY + Math.random() * 2.0,
+      vz: (Math.random() - 0.5) * 3.5,
+      life,
+      maxLife: life
+    });
+  },
+
+  spawnObstacleOrCoin() {
+    const lane = Math.floor(Math.random() * 3);
+    const x = this.laneX[lane];
+    const z = -68;
+
+    if (Math.random() < 0.56) {
+      const coin = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.55, 0.55, 0.16, 16),
+        new THREE.MeshStandardMaterial({ color: 0xfacc15, metalness: 0.8, roughness: 0.2, emissive: 0x713f12 })
+      );
+      coin.rotation.x = Math.PI / 2;
+      const high = Math.random() < 0.3;
+      coin.position.set(x, high ? 2.4 : 1.0, z);
+      this.scene.add(coin);
+      this.coins.push({ mesh: coin, lane, high });
+    } else {
+      const isBarrel = Math.random() < 0.5;
+      const mesh = isBarrel
+        ? new THREE.Mesh(new THREE.CylinderGeometry(0.65, 0.65, 1.3, 10), new THREE.MeshStandardMaterial({ color: 0x92400e }))
+        : new THREE.Mesh(new THREE.DodecahedronGeometry(0.85, 0), new THREE.MeshStandardMaterial({ color: 0x64748b, flatShading: true }));
+      if (isBarrel) mesh.rotation.z = Math.PI / 2;
+      mesh.position.set(x, 0.55, z);
+      this.scene.add(mesh);
+      this.obstacles.push({ mesh, lane });
+    }
+  },
+
+  buildWreckedPirateShipMesh() {
+    const grp = new THREE.Group();
+    const oldWood = new THREE.MeshStandardMaterial({ color: 0x5c3317, roughness: 0.85, flatShading: true });
+    const tornSail = new THREE.MeshStandardMaterial({ color: 0xe2e8f0, side: THREE.DoubleSide, roughness: 0.9 });
+
+    const hull = new THREE.Mesh(new THREE.BoxGeometry(2.1, 1.0, 3.8), oldWood);
+    hull.position.y = 0.5;
+    hull.rotation.z = 0.12;
+    const bow = new THREE.Mesh(new THREE.ConeGeometry(1.45, 1.6, 4), oldWood);
+    bow.rotation.x = -Math.PI / 2;
+    bow.rotation.y = Math.PI / 4;
+    bow.position.set(0, 0.65, -2.4);
+
+    const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.14, 4.2, 8), oldWood);
+    mast.position.set(0, 2.4, -0.2);
+    mast.rotation.z = -0.18;
+
+    const sail = new THREE.Mesh(new THREE.PlaneGeometry(2.3, 1.8), tornSail);
+    sail.position.set(-0.2, 2.9, -0.25);
+    sail.rotation.z = -0.18;
+
+    grp.add(hull, bow, mast, sail);
+    return grp;
+  },
+
+  spawnQuestionObstacles(options) {
+    this.qObstacles.forEach((q) => this.scene.remove(q.mesh));
+    this.qObstacles = [];
+
+    const ringColors = [0xe11d48, 0x16a34a, 0x2563eb];
+    const rockMat = new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.85, flatShading: true });
+
+    // Level 2: Sasaran bidikan pada Kapal Lanun Musuh
+    if (Game.level === 2) {
+      const targetCoords = [
+        new THREE.Vector3(-3.4, 2.2, -13.5),
+        new THREE.Vector3(0.0, 2.8, -13.0),
+        new THREE.Vector3(3.4, 2.2, -13.5)
+      ];
+      for (let i = 0; i < 3; i++) {
+        const grp = new THREE.Group();
+        const bullseye = new THREE.Mesh(
+          new THREE.TorusGeometry(0.85, 0.16, 10, 24),
+          new THREE.MeshBasicMaterial({ color: ringColors[i] })
+        );
+        const core = new THREE.Mesh(
+          new THREE.CircleGeometry(0.55, 20),
+          new THREE.MeshBasicMaterial({ color: 0xfef08a, side: THREE.DoubleSide })
+        );
+        grp.add(bullseye, core);
+        grp.position.copy(targetCoords[i]);
+        this.scene.add(grp);
+        this.qObstacles.push({ mesh: grp, lane: i, label: options[i] });
+      }
+      return;
+    }
+
+    // Level 3: Sasaran bidikan pada Sotong Kurita Gergasi
+    if (Game.level === 3) {
+      const targetCoords = [
+        new THREE.Vector3(-4.2, 2.6, -11.5),
+        new THREE.Vector3(0.0, 3.4, -11.0),
+        new THREE.Vector3(4.2, 2.6, -11.5)
+      ];
+      for (let i = 0; i < 3; i++) {
+        const grp = new THREE.Group();
+        const bullseye = new THREE.Mesh(
+          new THREE.TorusGeometry(0.95, 0.18, 10, 24),
+          new THREE.MeshBasicMaterial({ color: ringColors[i] })
+        );
+        const core = new THREE.Mesh(
+          new THREE.CircleGeometry(0.65, 20),
+          new THREE.MeshBasicMaterial({ color: 0xfef08a, side: THREE.DoubleSide })
+        );
+        grp.add(bullseye, core);
+        grp.position.copy(targetCoords[i]);
+        this.scene.add(grp);
+        this.qObstacles.push({ mesh: grp, lane: i, label: options[i] });
+      }
+      return;
+    }
+
+    // Level 1: Halangan di 3 laluan
+    for (let i = 0; i < 3; i++) {
+      const grp = new THREE.Group();
+      const isShip = i === 1;
+      const obj = isShip
+        ? this.buildWreckedPirateShipMesh()
+        : new THREE.Mesh(new THREE.DodecahedronGeometry(1.55, 1), rockMat);
+      if (!isShip) obj.position.y = 1.25;
+      grp.add(obj);
+
+      const ring = new THREE.Mesh(
+        new THREE.RingGeometry(1.65, 2.05, 24),
+        new THREE.MeshBasicMaterial({ color: ringColors[i], side: THREE.DoubleSide })
+      );
+      ring.rotation.x = -Math.PI / 2;
+      ring.position.y = 0.12;
+      grp.add(ring);
+
+      grp.position.set(this.laneX[i], 0, -56);
+      this.scene.add(grp);
+      this.qObstacles.push({ mesh: grp, lane: i, label: options[i] });
+    }
+  },
+
+  fireCannonAt(targetPos, isPlayerCannon, onHit, customStartPos = null) {
+    if (isPlayerCannon && this.cannonMesh) {
+      const aimDir = targetPos.clone().sub(new THREE.Vector3(this.playerGroup.position.x, 1.45, this.playerGroup.position.z - 2.55));
+      const yaw = Math.atan2(-aimDir.x, -aimDir.z);
+      this.cannonMesh.rotation.y = yaw;
+    }
+
+    const startPos = customStartPos
+      ? customStartPos.clone()
+      : isPlayerCannon
+        ? new THREE.Vector3(this.playerGroup.position.x, 1.55, this.playerGroup.position.z - 2.65)
+        : targetPos.clone().add(new THREE.Vector3(0, 1.4, 8));
+
+    const ball = new THREE.Mesh(
+      new THREE.SphereGeometry(0.38, 12, 12),
+      new THREE.MeshStandardMaterial({ color: 0x0f172a, metalness: 0.85, emissive: 0x451a03 })
+    );
+    ball.position.copy(startPos);
+    this.scene.add(ball);
+
+    AudioSys.cannon();
+    this.shakeTimer = 0.25;
+    for (let i = 0; i < 14; i++) this.spawnParticle(startPos, 0xfef08a, 0.36, 1.8, 0.55);
+
+    this.cannonBalls.push({
+      mesh: ball,
+      target: targetPos.clone(),
+      speed: 42,
+      onHit
+    });
+  },
+
+  triggerEnemyShipHitReaction(impactWorldPos) {
+    AudioSys.shatter();
+    this.shakeTimer = 0.55;
+    // Tambah kesan api kekal pada kapal lanun musuh
+    const localHit = new THREE.Vector3(
+      (Math.random() - 0.5) * 1.8,
+      1.65,
+      1.2 + (Math.random() - 0.5) * 2.5
+    );
+    this.addFireOnShip(true, localHit);
+
+    for (let i = 0; i < 24; i++) {
+      this.spawnParticle(impactWorldPos, i % 2 === 0 ? 0xf97316 : 0xfacc15, 0.48, 3.8, 1.0);
+    }
+    this.spawnShipSplintersAt(impactWorldPos);
+  },
+
+  triggerPlayerShipHitByEnemyCannon() {
+    this.triggerHitEffect();
+    this.spawnShipSplinters();
+    // Tambah kesan api pada kapal pemain
+    const localHit = new THREE.Vector3(
+      (Math.random() - 0.5) * 1.4,
+      1.35,
+      -1.8 + (Math.random() - 0.5) * 1.6
+    );
+    this.addFireOnShip(false, localHit);
+  },
+
+  spawnShipSplintersAt(pos) {
+    for (let i = 0; i < 18; i++) {
+      const piece = new THREE.Mesh(
+        new THREE.BoxGeometry(0.45, 0.14, 0.22),
+        new THREE.MeshStandardMaterial({ color: i % 2 === 0 ? 0x27272a : 0xdc2626 })
+      );
+      piece.position.copy(pos).add(new THREE.Vector3((Math.random() - 0.5) * 1.5, 0.5, (Math.random() - 0.5) * 1.5));
+      this.scene.add(piece);
+      this.debrisList.push({
+        mesh: piece,
+        vx: (Math.random() - 0.5) * 11,
+        vy: 5 + Math.random() * 6,
+        vz: (Math.random() - 0.5) * 9,
+        life: 1.05
+      });
+    }
+  },
+
+  triggerKrakenTentacleAttack(onImpact, onComplete) {
+    const tentacleIdx = Math.random() < 0.5 ? 3 : 4;
+    this.krakenAttackAnim = {
+      tentacleIdx,
+      progress: 0,
+      impactTriggered: false,
+      onImpact,
+      onComplete
+    };
+  },
+
+  spawnShipSplinters() {
+    for (let i = 0; i < 20; i++) {
+      const piece = new THREE.Mesh(
+        new THREE.BoxGeometry(0.45, 0.14, 0.22),
+        new THREE.MeshStandardMaterial({ color: i % 2 === 0 ? 0x7c3f1d : 0xfacc15 })
+      );
+      piece.position.set(
+        this.playerGroup.position.x + (Math.random() - 0.5) * 2.2,
+        1.5,
+        this.playerGroup.position.z - 1.2 + (Math.random() - 0.5) * 2.0
+      );
+      this.scene.add(piece);
+      this.debrisList.push({
+        mesh: piece,
+        vx: (Math.random() - 0.5) * 11,
+        vy: 5 + Math.random() * 6,
+        vz: (Math.random() - 0.5) * 9,
+        life: 1.05
+      });
+    }
+    for (let s = 0; s < 16; s++) {
+      this.spawnParticle(
+        new THREE.Vector3(this.playerGroup.position.x + (Math.random() - 0.5) * 2, 1.5, this.playerGroup.position.z - 1),
+        s % 2 === 0 ? 0xf97316 : 0x1e293b,
+        0.42,
+        3.2,
+        0.95
+      );
+    }
+  },
+
+  triggerKrakenHitReaction(hitPos) {
+    this.krakenHitTimer = 0.85;
+    AudioSys.shatter();
+    for (let i = 0; i < 22; i++) {
+      this.spawnParticle(
+        hitPos,
+        i % 2 === 0 ? 0xf97316 : 0xc084fc,
+        0.48,
+        3.8,
+        0.95
+      );
+    }
+  },
+
+  shatterObstacle(index) {
+    const item = this.qObstacles[index];
+    if (!item) return;
+    const pos = item.mesh.position.clone();
+    this.scene.remove(item.mesh);
+    this.qObstacles.splice(index, 1);
+
+    AudioSys.shatter();
+    for (let i = 0; i < 16; i++) {
+      const piece = new THREE.Mesh(
+        new THREE.DodecahedronGeometry(0.45, 0),
+        new THREE.MeshStandardMaterial({ color: i % 2 === 0 ? 0x64748b : 0x78350f, flatShading: true })
+      );
+      piece.position.copy(pos).add(new THREE.Vector3(0, 1.2, 0));
+      this.scene.add(piece);
+      this.debrisList.push({
+        mesh: piece,
+        vx: (Math.random() - 0.5) * 12,
+        vy: 4 + Math.random() * 7,
+        vz: (Math.random() - 0.5) * 12,
+        life: 1.1
+      });
+    }
+  },
+
+  triggerHitEffect() {
+    this.flashTimer = 1.0;
+    this.shakeTimer = 0.65;
+    this.parrotReact = -1.2;
+    this.playerTiltZ = (Math.random() < 0.5 ? -1 : 1) * 0.34;
+    AudioSys.crash();
+    const vig = document.getElementById('vignette-layer');
+    vig.classList.add('damage-flash');
+    setTimeout(() => vig.classList.remove('damage-flash'), 520);
+  },
+
+  triggerSuccessEffect() {
+    this.parrotReact = 1.2;
+    AudioSys.success();
+    const colors = [0xfacc15, 0xf43f5e, 0x22c55e, 0x38bdf8];
+    for (let i = 0; i < 24; i++) {
+      this.spawnParticle(
+        new THREE.Vector3(this.playerGroup.position.x, 3.2, this.playerGroup.position.z - 5),
+        colors[i % colors.length],
+        0.22,
+        4.5,
+        1.1
+      );
+    }
+  },
+
+  updateFiresAnimation(dt, time) {
+    // Api pada kapal lanun musuh
+    this.enemyFires.forEach((f) => {
+      const s = 0.9 + Math.sin(time * 18 + f.phase) * 0.25;
+      f.outer.scale.set(1, s, 1);
+      f.inner.scale.set(1, s * 1.1, 1);
+      if (Math.random() < 0.32 && this.enemyPirateGroup.visible) {
+        const wPos = f.group.getWorldPosition(new THREE.Vector3());
+        this.spawnParticle(wPos.add(new THREE.Vector3(0, 1.2, 0)), Math.random() < 0.5 ? 0x1e293b : 0xf97316, 0.38, 2.8, 0.85);
+      }
+    });
+
+    // Api pada kapal pemain
+    this.playerFires.forEach((f) => {
+      const s = 0.9 + Math.sin(time * 20 + f.phase) * 0.25;
+      f.outer.scale.set(1, s, 1);
+      f.inner.scale.set(1, s * 1.1, 1);
+      if (Math.random() < 0.3) {
+        const wPos = f.group.getWorldPosition(new THREE.Vector3());
+        this.spawnParticle(wPos.add(new THREE.Vector3(0, 1.1, 0)), Math.random() < 0.5 ? 0x1e293b : 0xf97316, 0.32, 2.4, 0.75);
+      }
+    });
+  },
+
+  updateKrakenAnimation(dt, time) {
+    if (!this.krakenGroup || !this.krakenGroup.visible) return;
+
+    if (!this.cutsceneMode) {
+      this.krakenGroup.position.y = Math.sin(time * 2.1) * 0.45;
+    }
+
+    if (this.krakenHitTimer > 0) {
+      this.krakenHitTimer -= dt;
+      this.krakenGroup.position.x = Math.sin(time * 42) * 0.55;
+      this.krakenGroup.rotation.x = -0.18;
+    } else {
+      this.krakenGroup.position.x += (0 - this.krakenGroup.position.x) * dt * 6;
+      this.krakenGroup.rotation.x += (0 - this.krakenGroup.rotation.x) * dt * 6;
+    }
+
+    if (this.krakenAttackAnim) {
+      const anim = this.krakenAttackAnim;
+      anim.progress += dt * 1.45;
+
+      if (anim.progress >= 0.52 && !anim.impactTriggered) {
+        anim.impactTriggered = true;
+        AudioSys.tentacleSlam();
+        this.triggerHitEffect();
+        this.spawnShipSplinters();
+        if (anim.onImpact) anim.onImpact();
+      }
+
+      if (anim.progress >= 1.25) {
+        const doneCb = anim.onComplete;
+        this.krakenAttackAnim = null;
+        if (doneCb) doneCb();
+      }
+    }
+
+    this.krakenTentacles.forEach((t, idx) => {
+      const isAttacking = this.krakenAttackAnim && this.krakenAttackAnim.tentacleIdx === idx;
+      if (isAttacking) {
+        const p = this.krakenAttackAnim.progress;
+        const strikeFactor = p < 0.52 ? Math.sin((p / 0.52) * (Math.PI / 2)) : Math.max(0, 1 - (p - 0.52) / 0.73);
+        t.root.rotation.x = strikeFactor * 1.32;
+        t.root.rotation.y = 0;
+        t.segments.forEach((seg, sIdx) => {
+          seg.rotation.x = strikeFactor * (0.14 + sIdx * 0.02);
+          seg.rotation.z = 0;
+        });
+      } else {
+        t.root.rotation.x = 0.18 + Math.sin(time * 2.6 + t.phaseOffset) * 0.14;
+        t.root.rotation.y = t.baseAngle * 0.45 + Math.cos(time * 1.9 + t.phaseOffset) * 0.12;
+        t.segments.forEach((seg, sIdx) => {
+          seg.rotation.z = Math.sin(time * 3.1 + t.phaseOffset + sIdx * 0.45) * 0.14;
+          seg.rotation.x = Math.cos(time * 2.5 + sIdx * 0.4) * 0.1;
+        });
+      }
+    });
+  },
+
+  update(dt, time, state) {
+    if (this.seaGeo && this.seaBasePos) {
+      const pos = this.seaGeo.attributes.position.array;
+      for (let i = 0; i < pos.length; i += 3) {
+        const bx = this.seaBasePos[i];
+        const bz = this.seaBasePos[i + 2];
+        pos[i + 1] = Math.sin(bx * 0.25 + time * 2.6) * 0.24 + Math.cos(bz * 0.22 + time * 3.1) * 0.22;
+      }
+      this.seaGeo.attributes.position.needsUpdate = true;
+    }
+
+    const blink = Math.floor(time * 8) % 2 === 0;
+    this.navyLights.forEach((l) => {
+      l.red.scale.setScalar(blink ? 1.35 : 0.7);
+      l.blue.scale.setScalar(!blink ? 1.35 : 0.7);
+    });
+
+    this.seagulls.forEach((g, idx) => {
+      const flap = Math.sin(time * 7 + idx) * 0.45;
+      const wL = g.getObjectByName('gullL');
+      const wR = g.getObjectByName('gullR');
+      if (wL) wL.rotation.z = flap;
+      if (wR) wR.rotation.z = -flap;
+      g.position.z += dt * 4;
+      if (g.position.z > 20) g.position.z = -140;
+    });
+
+    this.updateFiresAnimation(dt, time);
+    this.updateKrakenAnimation(dt, time);
+
+    if (this.cutsceneMode) {
+      this.cutsceneTimer -= dt;
+
+      if (this.cutsceneMode === 'pirate_encounter') {
+        // Babak bertemu dengan kapal lanun musuh sebelum misi Level 2 bermula
+        const progress = 1 - Math.max(0, this.cutsceneTimer / 3.8);
+        this.speed = Math.max(0, 18 * (1 - progress * 1.35));
+
+        // Kapal musuh meluncur masuk dari jauh dan berhenti pada z = -17.5
+        this.enemyPirateGroup.position.x = -4.5 * (1 - Math.min(1, progress * 1.25));
+        this.enemyPirateGroup.position.z = -46 + Math.min(1, progress * 1.2) * 28.5;
+        this.enemyPirateGroup.position.y = Math.sin(time * 3.0) * 0.1;
+        this.enemyPirateGroup.rotation.z = Math.cos(time * 2.3) * 0.05;
+
+        // Kamera bergerak ke hadapan kapal pemain (tidak ditutupi layar) menghadap kapal musuh
+        this.camera.position.set(
+          Math.sin(progress * Math.PI) * 3.2,
+          4.2,
+          -1.8
+        );
+        this.camera.lookAt(0, 2.3, -17.5);
+
+        if (this.cutsceneTimer <= 0) {
+          const cb = this.cutsceneCallback;
+          this.cutsceneMode = null;
+          this.hideBanner();
+          if (cb) cb();
+        }
+      } else if (this.cutsceneMode === 'pirate_defeat') {
+        this.speed = 0;
+        if (this.cutsceneTimer < 2.8) {
+          this.playerSinkY -= dt * 1.3;
+          this.playerTiltZ += dt * 0.3;
+          this.playerGroup.position.y = this.playerSinkY;
+          this.playerGroup.rotation.z = this.playerTiltZ;
+        }
+        this.camera.position.set(5.5, 6.2, 8.5);
+        this.camera.lookAt(0, 1.5, -5);
+
+        if (this.cutsceneTimer <= 0) {
+          const cb = this.cutsceneCallback;
+          this.cutsceneMode = null;
+          this.hideBanner();
+          if (cb) cb();
+        }
+      } else if (this.cutsceneMode === 'kraken_entrance') {
+        const progress = 1 - Math.max(0, this.cutsceneTimer / 3.6);
+        this.speed = Math.max(0, 18 * (1 - progress * 1.4));
+        this.krakenGroup.position.y = -17 + Math.min(1, progress * 1.25) * 17;
+
+        if (progress < 0.75 && Math.random() < 0.75) {
+          this.spawnParticle(
+            new THREE.Vector3((Math.random() - 0.5) * 9, 0.4, -15 + (Math.random() - 0.5) * 5),
+            0xe0f2fe,
+            0.55,
+            4.2,
+            0.75
+          );
+        }
+
+        // Kamera di hadapan tiang layar menghadap Sotong Kurita
+        this.camera.position.set(
+          Math.sin(progress * Math.PI) * 2.2,
+          6.0,
+          -1.5
+        );
+        this.camera.lookAt(0, 3.6, -16);
+
+        if (this.cutsceneTimer <= 0) {
+          const cb = this.cutsceneCallback;
+          this.cutsceneMode = null;
+          this.hideBanner();
+          if (cb) cb();
+        }
+      } else if (this.cutsceneMode === 'kraken_defeat') {
+        this.speed = 0;
+        if (!this.cutsceneVolleyFired) {
+          this.cutsceneVolleyFired = true;
+          this.triggerKrakenTentacleAttack(null, null);
+        }
+        if (this.cutsceneTimer < 2.2) {
+          this.playerSinkY -= dt * 1.3;
+          this.playerTiltZ += dt * 0.3;
+          this.playerGroup.position.y = this.playerSinkY;
+          this.playerGroup.rotation.z = this.playerTiltZ;
+        }
+        this.camera.position.set(4.8, 5.8, 8.2);
+        this.camera.lookAt(0, 1.8, -6);
+
+        if (this.cutsceneTimer <= 0) {
+          const cb = this.cutsceneCallback;
+          this.cutsceneMode = null;
+          this.hideBanner();
+          if (cb) cb();
+        }
+      } else if (this.cutsceneMode === 'entrance') {
+        const progress = 1 - Math.max(0, this.cutsceneTimer / 2.6);
+        this.camera.position.set(
+          Math.sin(progress * Math.PI) * 3.8,
+          6.8 + progress * 1.6,
+          15.5 - progress * 3.3
+        );
+        this.camera.lookAt(0, 1.2, -12);
+        this.navyGroup.position.z = 11.2 - Math.sin(progress * Math.PI) * 1.6;
+
+        if (this.cutsceneTimer <= 0) {
+          this.cutsceneMode = null;
+          this.hideBanner();
+        }
+      } else if (this.cutsceneMode === 'victory') {
+        if (Game.level === 2 && this.enemyPirateGroup.visible) {
+          this.enemyPirateGroup.position.y -= dt * 2.2;
+          this.enemyPirateGroup.rotation.z += dt * 0.25;
+          this.speed = 0;
+          this.camera.position.set(0, 4.0, -1.8);
+          this.camera.lookAt(0, 2.0, -17.5);
+        } else {
+          if (Game.level === 3 && this.krakenGroup.visible) {
+            this.krakenGroup.position.y -= dt * 7.5;
+            if (Math.random() < 0.65) {
+              this.spawnParticle(
+                new THREE.Vector3((Math.random() - 0.5) * 8, 0.4, -15),
+                0xe0f2fe,
+                0.48,
+                3.5,
+                0.7
+              );
+            }
+          }
+          this.speed = 34;
+          this.playerGroup.position.z -= dt * 14;
+          this.navyGroup.position.z += dt * 12;
+          this.camera.position.set(3.5, 6.2, 8.5);
+          this.camera.lookAt(this.playerGroup.position.x, 1.6, this.playerGroup.position.z - 8);
+
+          if (Math.random() < 0.6) {
+            this.spawnParticle(
+              new THREE.Vector3(this.playerGroup.position.x, 0.3, this.playerGroup.position.z + 2.8),
+              0xf8fafc,
+              0.35,
+              1.4,
+              0.6
+            );
+          }
+        }
+
+        if (this.cutsceneTimer <= 0) {
+          const cb = this.cutsceneCallback;
+          this.cutsceneMode = null;
+          this.hideBanner();
+          if (cb) cb();
+        }
+      } else if (this.cutsceneMode === 'capture') {
+        this.speed = 0;
+        const px = this.playerGroup.position.x;
+        this.navyGroup.position.x += (px - this.navyGroup.position.x) * dt * 3;
+        this.navyGroup.position.z += (6.2 - this.navyGroup.position.z) * dt * 3;
+
+        this.escortLeft.position.x += (px - 4.4 - this.escortLeft.position.x) * dt * 3;
+        this.escortLeft.position.z += (-0.5 - this.escortLeft.position.z) * dt * 3;
+        this.escortLeft.rotation.y = -Math.PI / 2.2;
+
+        this.escortRight.position.x += (px + 4.4 - this.escortRight.position.x) * dt * 3;
+        this.escortRight.position.z += (-0.5 - this.escortRight.position.z) * dt * 3;
+        this.escortRight.rotation.y = Math.PI / 2.2;
+
+        this.camera.position.set(px + 6.5, 7.5, 9.5);
+        this.camera.lookAt(px, 1.2, 0);
+
+        if (this.cutsceneTimer < 2.6 && !this.cutsceneVolleyFired) {
+          this.cutsceneVolleyFired = true;
+          this.fireCannonAt(this.playerGroup.position, false, () => {
+            this.triggerHitEffect();
+            for (let k = 0; k < 18; k++) {
+              this.spawnParticle(this.playerGroup.position.clone().add(new THREE.Vector3(0, 1.2, 0)), 0xf97316, 0.4, 3.2, 1.0);
+            }
+          });
+        }
+
+        if (this.cutsceneTimer < 2.1) {
+          this.playerSinkY -= dt * 1.35;
+          this.playerTiltZ += dt * 0.28;
+          this.playerGroup.position.y = this.playerSinkY;
+          this.playerGroup.rotation.z = this.playerTiltZ;
+        }
+
+        if (this.cutsceneTimer <= 0) {
+          const cb = this.cutsceneCallback;
+          this.cutsceneMode = null;
+          this.hideBanner();
+          if (cb) cb();
+        }
+      }
+    } else {
+      const isStaticDuel = (Game.level === 2 || Game.level === 3) && state !== 'MENU';
+      const targetSpeed = isStaticDuel ? 0 : (state === 'PLAYING' ? this.baseSpeed : state === 'MENU' ? 12 : 0);
+      this.speed += (targetSpeed - this.speed) * dt * 4;
+
+      const dx = this.targetX - this.playerGroup.position.x;
+      this.playerGroup.position.x += dx * dt * 8.5;
+
+      this.playerTiltZ += (0 - this.playerTiltZ) * dt * 4;
+      this.playerGroup.rotation.z = this.playerTiltZ - dx * 0.14 + Math.sin(time * 2.4) * 0.045;
+      this.playerGroup.rotation.x = Math.cos(time * 2.1) * 0.035;
+
+      if (this.isJumping) {
+        this.jumpY += this.jumpVel * dt;
+        this.jumpVel -= 24 * dt;
+        if (this.jumpY <= 0) {
+          this.jumpY = 0;
+          this.isJumping = false;
+        }
+      }
+      this.playerGroup.position.y = this.jumpY + Math.sin(time * 3.2) * 0.08;
+
+      if (Game.level === 2 && this.enemyPirateGroup.visible) {
+        this.enemyPirateGroup.position.y = Math.sin(time * 2.8 + 0.8) * 0.1;
+        this.enemyPirateGroup.rotation.z = Math.cos(time * 2.2) * 0.045;
+      }
+
+      if (!isStaticDuel) {
+        const desiredNavyZ = state === 'QUESTION' ? 12.5 : 8.5 + Game.lives * 1.1;
+        this.navyGroup.position.z += (desiredNavyZ - this.navyGroup.position.z) * dt * 2.5;
+        this.navyGroup.position.x += (this.playerGroup.position.x * 0.65 - this.navyGroup.position.x) * dt * 2.2;
+        this.navyGroup.position.y = Math.sin(time * 3.0 + 1) * 0.09;
+      }
+
+      let shakeX = 0;
+      let shakeY = 0;
+      if (this.shakeTimer > 0) {
+        this.shakeTimer -= dt;
+        shakeX = (Math.random() - 0.5) * 0.65;
+        shakeY = (Math.random() - 0.5) * 0.5;
+      }
+
+      if (Game.level === 2 && state !== 'MENU') {
+        // POV dari haluan kapal lanun pemain (di hadapan layar, z = -1.8) menghadap kapal lanun musuh
+        this.camera.position.set(
+          this.playerGroup.position.x + shakeX,
+          3.9 + shakeY,
+          -1.8
+        );
+        this.camera.lookAt(0, 2.3, -17.5);
+      } else if (Game.level === 3 && state !== 'MENU') {
+        // POV lebih tinggi & ke hadapan supaya Sotong Kurita jelas kelihatan tanpa terhalang layar
+        this.camera.position.set(
+          this.playerGroup.position.x + shakeX,
+          6.2 + shakeY,
+          -1.4
+        );
+        this.camera.lookAt(0, 3.6, -16.0);
+      } else {
+        // POV Level 1 dinaikkan sedikit ke atas (y = 8.4) supaya halangan di hadapan sangat jelas
+        this.camera.position.set(this.playerGroup.position.x * 0.45 + shakeX, 8.4 + shakeY, 12.2);
+        this.camera.lookAt(this.playerGroup.position.x * 0.35, 1.0, -14);
+      }
+    }
+
+    if (this.speed > 0.2) {
+      const moveZ = this.speed * dt;
+      this.scenery.forEach((isl) => {
+        isl.position.z += moveZ;
+        if (isl.position.z > 24) isl.position.z -= 240;
+      });
+
+      if (Math.random() < 0.45 && this.playerSinkY >= 0) {
+        this.spawnParticle(
+          new THREE.Vector3(this.playerGroup.position.x + (Math.random() - 0.5) * 1.4, 0.2, this.playerGroup.position.z + 2.7),
+          0xe0f2fe,
+          0.22,
+          0.6,
+          0.5
+        );
+      }
+
+      if (state === 'PLAYING' && !this.cutsceneMode && Game.level === 1) {
+        for (let i = this.coins.length - 1; i >= 0; i--) {
+          const c = this.coins[i];
+          c.mesh.position.z += moveZ;
+          c.mesh.rotation.z += dt * 4;
+          if (
+            Math.abs(c.mesh.position.z - this.playerGroup.position.z) < 2.2 &&
+            Math.abs(c.mesh.position.x - this.playerGroup.position.x) < 1.5 &&
+            (!c.high || this.jumpY > 0.7)
+          ) {
+            this.scene.remove(c.mesh);
+            this.coins.splice(i, 1);
+            Game.collectCoin();
+            continue;
+          }
+          if (c.mesh.position.z > 14) {
+            this.scene.remove(c.mesh);
+            this.coins.splice(i, 1);
+          }
+        }
+
+        for (let i = this.obstacles.length - 1; i >= 0; i--) {
+          const o = this.obstacles[i];
+          o.mesh.position.z += moveZ;
+          if (
+            Math.abs(o.mesh.position.z - this.playerGroup.position.z) < 2.0 &&
+            Math.abs(o.mesh.position.x - this.playerGroup.position.x) < 1.35 &&
+            this.jumpY < 0.85
+          ) {
+            this.scene.remove(o.mesh);
+            this.obstacles.splice(i, 1);
+            this.shakeTimer = 0.25;
+            AudioSys.splash();
+            continue;
+          }
+          if (o.mesh.position.z > 14) {
+            this.scene.remove(o.mesh);
+            this.obstacles.splice(i, 1);
+          }
+        }
+      }
+    }
+
+    if (this.qObstacles.length > 0 && Game.level === 1) {
+      this.qObstacles.forEach((q) => {
+        if (q.mesh.position.z < -12.5) {
+          q.mesh.position.z += Math.max(12, this.speed) * dt;
+          if (q.mesh.position.z > -12.5) q.mesh.position.z = -12.5;
+        }
+      });
+    }
+
+    if (Game.lives <= 2 && this.playerSinkY >= 0 && Math.random() < (Game.lives === 1 ? 0.35 : 0.14)) {
+      this.spawnParticle(
+        new THREE.Vector3(this.playerGroup.position.x + (Math.random() - 0.5) * 1.2, 1.7, this.playerGroup.position.z - 0.8),
+        0x1e293b,
+        0.35,
+        2.3,
+        0.9
+      );
+    }
+
+    for (let i = this.cannonBalls.length - 1; i >= 0; i--) {
+      const b = this.cannonBalls[i];
+      const dir = b.target.clone().sub(b.mesh.position);
+      const dist = dir.length();
+      if (dist < 0.95) {
+        this.scene.remove(b.mesh);
+        this.cannonBalls.splice(i, 1);
+        if (b.onHit) b.onHit();
+      } else {
+        dir.normalize();
+        b.mesh.position.addScaledVector(dir, b.speed * dt);
+      }
+    }
+
+    for (let i = this.debrisList.length - 1; i >= 0; i--) {
+      const d = this.debrisList[i];
+      d.life -= dt;
+      d.mesh.position.x += d.vx * dt;
+      d.mesh.position.y += d.vy * dt;
+      d.mesh.position.z += d.vz * dt;
+      d.vy -= 18 * dt;
+      d.mesh.rotation.x += dt * 6;
+      if (d.life <= 0) {
+        this.scene.remove(d.mesh);
+        this.debrisList.splice(i, 1);
+      }
+    }
+
+    for (let i = this.smokeParticles.length - 1; i >= 0; i--) {
+      const p = this.smokeParticles[i];
+      p.life -= dt;
+      p.mesh.position.x += p.vx * dt;
+      p.mesh.position.y += p.vy * dt;
+      p.mesh.position.z += p.vz * dt;
+      p.mesh.material.opacity = Math.max(0, p.life / p.maxLife);
+      if (p.life <= 0) {
+        this.scene.remove(p.mesh);
+        this.smokeParticles.splice(i, 1);
+      }
+    }
+
+    if (this.parrotGroup) {
+      if (this.parrotReact > 0) {
+        this.parrotReact -= dt;
+        this.parrotGroup.position.y = 1.58 + Math.abs(Math.sin(time * 18)) * 0.38;
+      } else if (this.parrotReact < 0) {
+        this.parrotReact += dt;
+        this.parrotGroup.rotation.z = Math.sin(time * 24) * 0.35;
+      } else {
+        this.parrotGroup.position.y = 1.58;
+        this.parrotGroup.rotation.z = 0;
+      }
+    }
+
+    this.renderer.render(this.scene, this.camera);
+  }
+};
+
+/* ============================================================================
+   7. LOGIK UTAMA PERMAINAN (KEMBARA ADJEKTIF)
+   ============================================================================ */
+const Game = {
+  state: 'MENU',
+  playerName: '',
+  playerClass: '',
+  avatar: 'boy',
+  level: 1,
+  questions: [],
+  qIndex: 0,
+  currentQ: null,
+  answeredCurrent: false,
+  score: 0,
+  coins: 0,
+  lives: 3,
+  correctCount: 0,
+  sailTimer: 0,
+  spawnTimer: 0,
+
+  init() {
+    World3D.init();
+    this.buildNotesUI();
+    this.buildMiniQuizUI();
+    this.bindEvents();
+    StorageMgr.flushQueue();
+
+    let lastTime = performance.now();
+    const loop = (now) => {
+      const dt = Math.min((now - lastTime) / 1000, 0.05);
+      lastTime = now;
+      this.update(dt, now / 1000);
+      requestAnimationFrame(loop);
+    };
+    requestAnimationFrame(loop);
+  },
+
+  bindEvents() {
+    document.getElementById('btn-start').onclick = () => {
+      AudioSys.init();
+      const name = document.getElementById('input-name').value.trim();
+      const cls = document.getElementById('input-class').value.trim();
+      if (!name || !cls) {
+        UI.toast('⚠️ Sila isi Nama Kapten dan Kelas terlebih dahulu!');
+        return;
+      }
+      this.playerName = name;
+      this.playerClass = cls;
+      this.refreshLevelCards();
+      UI.showScreen('screen-setup');
+    };
+
+    document.getElementById('btn-notes').onclick = () => {
+      AudioSys.init();
+      UI.showScreen('screen-notes');
+    };
+    document.getElementById('btn-howto').onclick = () => {
+      AudioSys.init();
+      UI.showScreen('screen-howto');
+    };
+    document.getElementById('btn-leaderboard').onclick = () => {
+      AudioSys.init();
+      TeacherView.open(false);
+    };
+    document.getElementById('btn-teacher').onclick = () => {
+      AudioSys.init();
+      TeacherView.open(true);
+    };
+    document.getElementById('btn-music').onclick = () => {
+      const on = AudioSys.toggleMusic();
+      document.getElementById('btn-music').textContent = on ? '🔊 Muzik & Bunyi: HIDUP' : '🔇 Muzik & Bunyi: MATI';
+    };
+
+    window.addEventListener('keydown', (e) => {
+      if ((this.state === 'PLAYING' || this.state === 'QUESTION') && this.level === 1) {
+        if (e.key === 'ArrowLeft') World3D.moveLane(-1);
+        else if (e.key === 'ArrowRight') World3D.moveLane(1);
+        else if (e.key === 'ArrowUp' || e.key === ' ') World3D.jump();
+      }
+      if (this.state === 'QUESTION' && !this.answeredCurrent) {
+        if (e.key === '1') this.submitAnswerByButton(0);
+        else if (e.key === '2') this.submitAnswerByButton(1);
+        else if (e.key === '3') this.submitAnswerByButton(2);
+        else if (e.key === 'Enter' && this.level === 1) this.submitAnswerByLane();
+      }
+    });
+
+    let touchStartX = 0;
+    let touchStartY = 0;
+    const canvas = document.getElementById('game-canvas');
+    canvas.addEventListener('touchstart', (e) => {
+      if (e.touches.length > 0) {
+        touchStartX = e.touches[0].clientX;
+        touchStartY = e.touches[0].clientY;
+      }
+    }, { passive: true });
+
+    canvas.addEventListener('touchend', (e) => {
+      if (this.level !== 1) return;
+      if (e.changedTouches.length > 0) {
+        const dx = e.changedTouches[0].clientX - touchStartX;
+        const dy = e.changedTouches[0].clientY - touchStartY;
+        if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 28) {
+          World3D.moveLane(dx > 0 ? 1 : -1);
+        } else if (dy < -32) {
+          World3D.jump();
+        }
+      }
+    }, { passive: true });
+  },
+
+  selectAvatar(gender) {
+    this.avatar = gender;
+    document.getElementById('avatar-boy').classList.toggle('active', gender === 'boy');
+    document.getElementById('avatar-girl').classList.toggle('active', gender === 'girl');
+    World3D.buildAvatar(gender);
+  },
+
+  refreshLevelCards() {
+    const prog = StorageMgr.getProgress();
+    for (let lv = 1; lv <= 3; lv++) {
+      const card = document.getElementById(`lvl-card-${lv}`);
+      const starEl = document.getElementById(`lvl-stars-${lv}`);
+      const unlocked = lv <= prog.unlocked;
+      card.classList.toggle('locked', !unlocked);
+      if (unlocked) {
+        const s = prog.stars[lv] || 0;
+        starEl.textContent = '⭐'.repeat(s) + '☆'.repeat(3 - s);
+      } else {
+        starEl.textContent = '🔒 Terkunci';
+      }
+    }
+    this.selectLevel(Math.min(this.level, prog.unlocked));
+  },
+
+  selectLevel(lv) {
+    const prog = StorageMgr.getProgress();
+    if (lv > prog.unlocked) {
+      UI.toast('🔒 Tamatkan peringkat sebelumnya dahulu!');
+      return;
+    }
+    this.level = lv;
+    for (let i = 1; i <= 3; i++) {
+      document.getElementById(`lvl-card-${i}`).classList.toggle('active', i === lv);
+    }
+  },
+
+  shuffleQuestionOptions(rawQ) {
+    const indexed = rawQ.o.map((text, idx) => ({ text, isCorrect: idx === rawQ.a }));
+    for (let i = indexed.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [indexed[i], indexed[j]] = [indexed[j], indexed[i]];
+    }
+    return {
+      q: rawQ.q,
+      o: indexed.map((item) => item.text),
+      a: indexed.findIndex((item) => item.isCorrect),
+      ex: rawQ.ex
+    };
+  },
+
+  startVoyage() {
+    AudioSys.init();
+    if (AudioSys.musicEnabled) AudioSys.startMusic();
+
+    this.questions = LEVELS[this.level].map((q) => this.shuffleQuestionOptions(q));
+    this.qIndex = 0;
+    this.score = 0;
+    this.coins = 0;
+    this.lives = 3;
+    this.correctCount = 0;
+    this.sailTimer = 3.6;
+    this.spawnTimer = 0.8;
+
+    World3D.resetVoyage(this.level);
+
+    UI.showScreen(null);
+    document.getElementById('hud-layer').classList.remove('hidden');
+    document.getElementById('question-box').classList.add('hidden');
+    document.getElementById('answer-buttons').classList.add('hidden');
+    document.getElementById('btn-fire-lane').classList.add('hidden');
+    document.getElementById('floating-answers').classList.add('hidden');
+
+    const isDuelOrBoss = this.level === 2 || this.level === 3;
+    document.getElementById('boss-hp-container').classList.toggle('hidden', !isDuelOrBoss);
+    document.getElementById('boss-hp-label').textContent = this.level === 2 ? '🏴‍☠️ KAPAL LANUN MUSUH' : '🐙 SOTONG KURITA';
+    document.getElementById('steer-controls-bar').classList.toggle('hidden', isDuelOrBoss);
+    this.updateBossHP();
+    this.updateHUD();
+
+    if (this.level === 2) {
+      this.state = 'CUTSCENE';
+      World3D.startPirateEncounterCutscene(() => {
+        this.triggerQuestion();
+      });
+    } else if (this.level === 3) {
+      this.state = 'CUTSCENE';
+      World3D.startKrakenEntranceCutscene(() => {
+        this.triggerQuestion();
+      });
+    } else {
+      this.state = 'PLAYING';
+      World3D.startEntranceCutscene();
+    }
+  },
+
+  quitToMenu() {
+    this.state = 'MENU';
+    World3D.cutsceneMode = null;
+    World3D.hideBanner();
+    document.getElementById('hud-layer').classList.add('hidden');
+    document.getElementById('floating-answers').classList.add('hidden');
+    UI.showScreen('screen-menu');
+  },
+
+  updateBossHP() {
+    if (this.level !== 2 && this.level !== 3) return;
+    const remaining = Math.max(0, 10 - this.correctCount);
+    const pct = (remaining / 10) * 100;
+    document.getElementById('boss-hp-fill').style.width = `${pct}%`;
+  },
+
+  updateHUD() {
+    document.getElementById('hud-player').textContent = this.playerName;
+    document.getElementById('hud-class').textContent = this.playerClass;
+    document.getElementById('hud-level').textContent = this.level;
+    document.getElementById('hud-qnum').textContent = `${Math.min(this.qIndex + 1, 10)}/10`;
+    document.getElementById('hud-score').textContent = this.score;
+    document.getElementById('hud-coins').textContent = this.coins;
+    document.getElementById('hud-lives').textContent = '❤️'.repeat(this.lives) + '🖤'.repeat(3 - this.lives);
+  },
+
+  collectCoin() {
+    this.coins += 1;
+    AudioSys.coin();
+    this.updateHUD();
+  },
+
+  triggerQuestion() {
+    this.state = 'QUESTION';
+    this.answeredCurrent = false;
+    this.currentQ = this.questions[this.qIndex];
+
+    World3D.obstacles.forEach((o) => World3D.scene.remove(o.mesh));
+    World3D.obstacles = [];
+
+    World3D.spawnQuestionObstacles(this.currentQ.o);
+
+    document.getElementById('question-tag').textContent = this.level === 2
+      ? '🏴‍☠️ BIDIK MERIAM KE ARAH KAPAL LANUN MUSUH!'
+      : this.level === 3
+        ? '🐙 BIDIK MERIAM KE ARAH SOTONG KURITA!'
+        : 'CABARAN KATA ADJEKTIF PERASAAN';
+    document.getElementById('question-text').textContent = this.currentQ.q;
+    document.getElementById('question-box').classList.remove('hidden');
+    document.getElementById('answer-buttons').classList.remove('hidden');
+    document.getElementById('btn-fire-lane').classList.toggle('hidden', this.level !== 1);
+    document.getElementById('floating-answers').classList.remove('hidden');
+
+    const letters = ['A', 'B', 'C'];
+    for (let i = 0; i < 3; i++) {
+      document.getElementById(`btn-ans-${i}`).textContent = `${letters[i]}. ${this.currentQ.o[i]}`;
+      document.getElementById(`float-${letters[i].toLowerCase()}`).textContent = `${letters[i]}. ${this.currentQ.o[i]}`;
+    }
+  },
+
+  submitAnswerByButton(choiceIdx) {
+    if (this.state !== 'QUESTION' || this.answeredCurrent) return;
+    if (this.level === 1) {
+      World3D.setLane(choiceIdx);
+      setTimeout(() => this.evaluateAnswer(choiceIdx), 260);
+    } else {
+      this.evaluateAnswer(choiceIdx);
+    }
+  },
+
+  submitAnswerByLane() {
+    if (this.state !== 'QUESTION' || this.answeredCurrent || this.level !== 1) return;
+    this.evaluateAnswer(World3D.currentLane);
+  },
+
+  evaluateAnswer(choiceIdx) {
+    if (this.answeredCurrent) return;
+    this.answeredCurrent = true;
+    this.state = 'ANIMATING';
+
+    document.getElementById('answer-buttons').classList.add('hidden');
+    document.getElementById('btn-fire-lane').classList.add('hidden');
+    document.getElementById('floating-answers').classList.add('hidden');
+
+    const isCorrect = choiceIdx === this.currentQ.a;
+    const targetObs = World3D.qObstacles[choiceIdx];
+    const targetPos = targetObs ? targetObs.mesh.position.clone() : new THREE.Vector3(World3D.laneX[choiceIdx], 2.5, -12.5);
+
+    if (isCorrect) {
+      this.correctCount += 1;
+      this.score += 10;
+      this.updateHUD();
+      this.updateBossHP();
+
+      if (this.level === 2) {
+        const enemyHitPos = targetPos.clone().add(new THREE.Vector3(0, 0.2, -3.5));
+        World3D.fireCannonAt(enemyHitPos, true, () => {
+          World3D.triggerEnemyShipHitReaction(enemyHitPos);
+          World3D.triggerSuccessEffect();
+          setTimeout(() => this.showFeedbackModal(true), 800);
+        });
+      } else if (this.level === 3) {
+        const krakenImpactPos = targetPos.clone().add(new THREE.Vector3(0, 0.5, -2.5));
+        World3D.fireCannonAt(krakenImpactPos, true, () => {
+          World3D.triggerKrakenHitReaction(krakenImpactPos);
+          World3D.triggerSuccessEffect();
+          setTimeout(() => this.showFeedbackModal(true), 750);
+        });
+      } else {
+        World3D.fireCannonAt(targetPos, true, () => {
+          World3D.shatterObstacle(choiceIdx);
+          World3D.triggerSuccessEffect();
+          setTimeout(() => this.showFeedbackModal(true), 650);
+        });
+      }
+    } else {
+      this.lives = Math.max(0, this.lives - 1);
+      this.updateHUD();
+      World3D.updateShipDamageVisual(this.lives);
+
+      if (this.level === 2) {
+        // Meriam dari kapal lanun musuh ditembak ke arah kapal lanun pemain
+        const enemyCannonStart = new THREE.Vector3(0, 2.2, -13.5);
+        const playerImpactPos = new THREE.Vector3(0, 1.8, -3.2);
+        World3D.fireCannonAt(playerImpactPos, false, () => {
+          World3D.triggerPlayerShipHitByEnemyCannon();
+          AudioSys.loseLife();
+          setTimeout(() => this.showFeedbackModal(false), 850);
+        }, enemyCannonStart);
+      } else if (this.level === 3) {
+        World3D.triggerKrakenTentacleAttack(
+          () => {
+            AudioSys.loseLife();
+          },
+          () => {
+            this.showFeedbackModal(false);
+          }
+        );
+      } else {
+        World3D.triggerHitEffect();
+        AudioSys.loseLife();
+        setTimeout(() => this.showFeedbackModal(false), 750);
+      }
+    }
+  },
+
+  showFeedbackModal(isCorrect) {
+    document.getElementById('question-box').classList.add('hidden');
+
+    const titleEl = document.getElementById('fb-title');
+    const subEl = document.getElementById('fb-sub');
+    if (isCorrect) {
+      titleEl.textContent = '🎉 HEBAT! JAWAPAN BETUL!';
+      subEl.textContent = this.level === 2
+        ? '🔥 Tembakan meriam kamu tepat mengenai kapal lanun musuh dan membakarnya!'
+        : this.level === 3
+          ? '💥 Tembakan meriam kapal lanun mengenai Sotong Kurita Gergasi!'
+          : '💥 Meriam berjaya memusnahkan halangan!';
+    } else {
+      titleEl.textContent = '💔 ALAMAK! JAWAPAN SALAH!';
+      subEl.textContent = this.level === 2
+        ? '🔥 Kapal lanun musuh membalas tembakan meriam dan membakar kapal kamu! (-1 Nyawa)'
+        : this.level === 3
+          ? '🐙 Sotong Kurita menghentakkan sesungutnya ke kapal lanun! (-1 Nyawa)'
+          : '🚢 Kapal kamu mengalami kerosakan dan kehilangan 1 nyawa!';
+    }
+
+    const letters = ['A', 'B', 'C'];
+    const correctWord = this.currentQ.o[this.currentQ.a];
+    document.getElementById('fb-correct-ans').textContent = `Jawapan yang betul ialah: ${letters[this.currentQ.a]}. ${correctWord}`;
+
+    const fullSentence = this.currentQ.q.includes('____')
+      ? 'Ayat lengkap: ' + this.currentQ.q.replace('____', correctWord.toLowerCase())
+      : '';
+    document.getElementById('fb-sentence').textContent = fullSentence;
+    document.getElementById('fb-explanation').textContent = this.currentQ.ex;
+    document.getElementById('fb-score').textContent = this.score;
+    document.getElementById('fb-lives').textContent = '❤️'.repeat(this.lives) + '🖤'.repeat(3 - this.lives);
+
+    document.getElementById('btn-continue-fb').textContent = (this.level === 2 || this.level === 3)
+      ? '💥 TERUSKAN PERTEMPURAN'
+      : '⛵ TERUSKAN PELAYARAN';
+
+    UI.showScreen('screen-feedback');
+  },
+
+  continueAfterFeedback() {
+    UI.showScreen(null);
+    World3D.qObstacles.forEach((q) => World3D.scene.remove(q.mesh));
+    World3D.qObstacles = [];
+
+    if (this.lives <= 0) {
+      this.state = 'CUTSCENE';
+      World3D.startCaptureCutscene(() => this.finishLevel(false));
+      return;
+    }
+
+    this.qIndex += 1;
+    if (this.qIndex >= this.questions.length) {
+      this.state = 'CUTSCENE';
+      const isGrandWin = this.level === 3;
+      World3D.startVictoryCutscene(isGrandWin, () => this.finishLevel(true));
+      return;
+    }
+
+    this.updateHUD();
+    if (this.level === 2 || this.level === 3) {
+      this.triggerQuestion();
+    } else {
+      this.state = 'PLAYING';
+      this.sailTimer = 3.2;
+    }
+  },
+
+  async finishLevel(completed) {
+    this.state = 'RESULT';
+    document.getElementById('hud-layer').classList.add('hidden');
+
+    const answered = completed ? 10 : Math.min(10, this.qIndex + 1);
+    const percent = Math.round((this.correctCount / 10) * 100);
+    const stars = percent >= 80 ? 3 : percent >= 50 ? 2 : 1;
+
+    if (completed) {
+      StorageMgr.saveProgress(this.level, stars);
+    }
+
+    const resTitle = document.getElementById('res-title');
+    const resSub = document.getElementById('res-sub');
+    if (!completed) {
+      resTitle.textContent = this.level === 2
+        ? '🔥 KAPAL LANUN KARAM!'
+        : this.level === 3
+          ? '🐙 KAPAL DIKALAHKAN KURITA!'
+          : '⚓ KAPAL LANUN DITANGKAP!';
+      resSub.textContent = 'Jangan putus asa, kapten! Cuba lagi!';
+    } else if (this.level === 3) {
+      resTitle.textContent = 'TAHNIAH, KAPTEN! 🏆';
+      resSub.textContent = 'Kamu berjaya menewaskan Sotong Kurita Gergasi dan menemui Pulau Harta Karun!';
+    } else if (this.level === 2) {
+      resTitle.textContent = '🏆 PERTEMPURAN MERIAM DIMENANGI!';
+      resSub.textContent = 'Kapal lanun musuh telah dibakar dan tenggelam!';
+    } else {
+      resTitle.textContent = '🎉 PERINGKAT SELESAI!';
+      resSub.textContent = 'Kapal lanun berjaya memecut meninggalkan Peronda Maritim!';
+    }
+
+    document.getElementById('res-stars').textContent = '⭐'.repeat(stars) + '☆'.repeat(3 - stars);
+    document.getElementById('res-name').textContent = this.playerName;
+    document.getElementById('res-class').textContent = this.playerClass;
+    document.getElementById('res-level').textContent = `Peringkat ${this.level}`;
+    document.getElementById('res-correct').textContent = `${this.correctCount} / ${answered}`;
+    document.getElementById('res-percent').textContent = `${percent}%`;
+    document.getElementById('res-coins').textContent = this.coins;
+
+    const nextBtn = document.getElementById('btn-next-level');
+    nextBtn.classList.toggle('hidden', !completed || this.level >= 3);
+
+    UI.showScreen('screen-result');
+
+    const payload = {
+      n: this.playerName,
+      k: this.playerClass,
+      lv: this.level,
+      b: this.correctCount,
+      t: answered,
+      s: stars,
+      c: this.coins,
+      d: Date.now()
+    };
+
+    StorageMgr.saveLocalRecord({
+      ...payload,
+      dateStr: new Date().toLocaleString('ms-MY')
+    });
+
+    const statusEl = document.getElementById('res-sync-status');
+    if (!SHEET_URL) {
+      statusEl.textContent = '💾 Rekod disimpan pada peranti ini.';
+    } else {
+      statusEl.textContent = '☁️ Menghantar markah kepada guru…';
+      const sent = await StorageMgr.postToSheet(payload);
+      if (sent) {
+        statusEl.textContent = '✅ Markah telah dihantar kepada guru!';
+      } else {
+        StorageMgr.enqueueRecord(payload);
+        statusEl.textContent = '⚠️ Tidak dapat hantar sekarang – markah disimpan dan akan dihantar semula nanti.';
+      }
+    }
+  },
+
+  nextLevel() {
+    if (this.level < 3) {
+      this.level += 1;
+      this.startVoyage();
+    }
+  },
+
+  updateFloatingLabels() {
+    if (this.state !== 'QUESTION' || World3D.qObstacles.length < 3) return;
+    const ids = ['float-a', 'float-b', 'float-c'];
+    const yOffset = (this.level === 2 || this.level === 3) ? 1.35 : 3.3;
+    World3D.qObstacles.forEach((item, idx) => {
+      const pos = item.mesh.position.clone().add(new THREE.Vector3(0, yOffset, 0));
+      pos.project(World3D.camera);
+      const x = (pos.x * 0.5 + 0.5) * window.innerWidth;
+      const y = (-pos.y * 0.5 + 0.5) * window.innerHeight;
+      const el = document.getElementById(ids[idx]);
+      if (el) {
+        el.style.left = `${x}px`;
+        el.style.top = `${y}px`;
+      }
+    });
+  },
+
+  update(dt, time) {
+    World3D.update(dt, time, this.state);
+
+    if (this.state === 'PLAYING' && !World3D.cutsceneMode && this.level === 1) {
+      this.spawnTimer -= dt;
+      if (this.spawnTimer <= 0) {
+        World3D.spawnObstacleOrCoin();
+        this.spawnTimer = 0.85;
+      }
+
+      this.sailTimer -= dt;
+      if (this.sailTimer <= 0) {
+        this.triggerQuestion();
+      }
+    } else if (this.state === 'QUESTION') {
+      this.updateFloatingLabels();
+    }
+  },
+
+  buildNotesUI() {
+    const container = document.getElementById('notes-container');
+    container.innerHTML = NOTES_DATA.map((n, i) => `
+      <div class="note-item">
+        <div class="note-emoji">${n.emoji}</div>
+        <div class="note-word">${n.word}</div>
+        <div class="note-desc">${n.desc}</div>
+        <div class="note-ex">"${n.ex}"</div>
+        <button class="btn btn-gold" style="padding:6px 12px; font-size:0.85rem;" onclick="Game.speakNote(${i})">🔊 Dengar Nota</button>
+      </div>
+    `).join('');
+  },
+
+  speakNote(idx) {
+    const item = NOTES_DATA[idx];
+    if (!item || !('speechSynthesis' in window)) {
+      UI.toast('🔊 Fungsi suara tidak disokong pada pelayar ini.');
+      return;
+    }
+    window.speechSynthesis.cancel();
+    const utter = new SpeechSynthesisUtterance(`${item.word}. ${item.desc} Contoh ayat: ${item.ex}`);
+    utter.lang = 'ms-MY';
+    utter.rate = 0.92;
+    window.speechSynthesis.speak(utter);
+  },
+
+  buildMiniQuizUI() {
+    const box = document.getElementById('mini-quiz-box');
+    box.innerHTML = MINI_QUIZ.map((q, qi) => `
+      <div style="margin-bottom:10px; padding-bottom:8px; border-bottom:1px dashed #d97706;">
+        <div style="font-weight:800; margin-bottom:4px;">${qi + 1}. ${q.q}</div>
+        <div style="display:flex; flex-wrap:wrap; gap:6px;">
+          ${q.o.map((opt, oi) => `
+            <button id="mq-${qi}-${oi}" class="btn btn-wood" style="padding:5px 12px; font-size:0.88rem;" onclick="Game.answerMiniQuiz(${qi}, ${oi})">${opt}</button>
+          `).join('')}
+        </div>
+      </div>
+    `).join('');
+  },
+
+  answerMiniQuiz(qi, oi) {
+    const q = MINI_QUIZ[qi];
+    const correct = oi === q.a;
+    const btn = document.getElementById(`mq-${qi}-${oi}`);
+    if (correct) {
+      AudioSys.success();
+      btn.style.background = '#16a34a';
+      UI.toast('🎉 Betul! Syabas!');
+    } else {
+      AudioSys.loseLife();
+      btn.style.background = '#dc2626';
+      UI.toast(`Cuba lagi! Jawapan tepat ialah ${q.o[q.a]}.`);
+    }
+  }
+};
+
+/* ============================================================================
+   8. PAPARAN GURU & PAPAN SKOR
+   ============================================================================ */
+const TeacherView = {
+  records: [],
+
+  open(isTeacherMode) {
+    UI.showScreen('screen-teacher');
+    document.getElementById('teacher-screen-title').textContent = isTeacherMode ? '👩‍🏫 PAPARAN REKOD GURU' : '🏆 PAPAN SKOR KAPTEN';
+    const pinBox = document.getElementById('teacher-pin-box');
+    const noteEl = document.getElementById('teacher-note');
+
+    if (isTeacherMode && SHEET_URL) {
+      pinBox.classList.remove('hidden');
+      noteEl.textContent = 'Sila masukkan PIN Guru untuk memaparkan semua rekod murid daripada Google Sheets.';
+    } else {
+      pinBox.classList.add('hidden');
+      noteEl.textContent = SHEET_URL
+        ? 'Memaparkan rekod pada peranti ini. Gunakan Paparan Guru dengan PIN untuk melihat semua rekod kelas.'
+        : 'Nota: URL Google Sheets belum ditetapkan. Rekod di bawah adalah simpanan setempat pada peranti ini sahaja.';
+    }
+
+    this.records = StorageMgr.getLocalRecords();
+    this.populateClassFilter();
+    this.renderTable();
+  },
+
+  async fetchCloudRecords() {
+    const pin = document.getElementById('input-pin').value.trim();
+    if (!pin) {
+      UI.toast('⚠️ Sila masukkan PIN Guru.');
+      return;
+    }
+    UI.toast('☁️ Memuat turun rekod daripada Google Sheets...');
+    try {
+      const res = await fetch(`${SHEET_URL}?pin=${encodeURIComponent(pin)}`);
+      const data = await res.json();
+      if (!data.ok) {
+        UI.toast('❌ PIN salah atau gagal membaca data.');
+        return;
+      }
+      this.records = (data.rows || []).map((r) => ({
+        ...r,
+        dateStr: r.d
+      }));
+      document.getElementById('teacher-note').textContent = '✅ Berjaya memuat turun rekod terkini daripada Google Sheets.';
+      this.populateClassFilter();
+      this.renderTable();
+    } catch (e) {
+      UI.toast('⚠️ Ralat sambungan ke Google Sheets.');
+    }
+  },
+
+  populateClassFilter() {
+    const select = document.getElementById('filter-class');
+    const classes = [...new Set(this.records.map((r) => r.k).filter(Boolean))];
+    select.innerHTML = '<option value="ALL">Semua Kelas</option>' +
+      classes.map((c) => `<option value="${c}">${c}</option>`).join('');
+  },
+
+  renderTable() {
+    const filter = document.getElementById('filter-class').value;
+    const filtered = filter === 'ALL' ? this.records : this.records.filter((r) => r.k === filter);
+
+    document.getElementById('stat-total').textContent = filtered.length;
+    const avg = filtered.length
+      ? Math.round(filtered.reduce((acc, r) => acc + ((r.b / (r.t || 10)) * 100), 0) / filtered.length)
+      : 0;
+    document.getElementById('stat-avg').textContent = `${avg}%`;
+
+    const tbody = document.getElementById('teacher-tbody');
+    if (!filtered.length) {
+      tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding:14px;">Tiada rekod ditemui.</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = filtered.map((r) => {
+      const pct = Math.round((r.b / (r.t || 10)) * 100);
+      return `
+        <tr>
+          <td>${r.n}</td>
+          <td>${r.k}</td>
+          <td>Peringkat ${r.lv}</td>
+          <td>${r.b}/${r.t || 10}</td>
+          <td>${pct}%</td>
+          <td>${'⭐'.repeat(r.s || 1)}</td>
+          <td>${r.c || 0}</td>
+          <td>${r.dateStr || '-'}</td>
+        </tr>
+      `;
+    }).join('');
+  },
+
+  copyCSV() {
+    const header = 'Nama,Kelas,Peringkat,Betul,Jumlah Soalan,Peratus,Bintang,Syiling,Tarikh & Masa
+';
+    const rows = this.records.map((r) => {
+      const pct = Math.round((r.b / (r.t || 10)) * 100) + '%';
+      return `"${r.n}","${r.k}",${r.lv},${r.b},${r.t || 10},${pct},${r.s || 1},${r.c || 0},"${r.dateStr || ''}"`;
+    }).join('
+');
+
+    const ta = document.createElement('textarea');
+    ta.value = header + rows;
+    document.body.appendChild(ta);
+    ta.select();
+    try {
+      document.execCommand('copy');
+      UI.toast('📋 Data CSV berjaya disalin!');
+    } catch (e) {
+      UI.toast('⚠️ Gagal menyalin CSV.');
+    }
+    document.body.removeChild(ta);
+  }
+};
+
+window.addEventListener('load', () => Game.init());
+</script>
+</body>
+</html>
